@@ -524,27 +524,166 @@ def get_status():
 def create_templates():
     os.makedirs('templates', exist_ok=True)
 
+    # Create base styles that will be used across all templates
+    base_styles = """
+        :root {
+            --primary: #1DA1F2;
+            --primary-dark: #1a91da;
+            --bg: #ffffff;
+            --text: #14171A;
+            --text-secondary: #657786;
+            --border: #E1E8ED;
+            --danger: #E0245E;
+            --success: #17BF63;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.2s ease;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        }
+        h1, h2 {
+            color: var(--text);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 1.5rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            text-align: center;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+            background: var(--primary);
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(29,161,242,0.2);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(29,161,242,0.3);
+            background: var(--primary-dark);
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(29,161,242,0.2);
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        .flash-message {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            background: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+            text-align: center;
+        }
+        .action-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .action-links a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+        }
+        .action-links a:hover {
+            background: rgba(29,161,242,0.1);
+        }
+    """
+
     # ایجاد قالب صفحه ورود
     with open('templates/login.html', 'w', encoding='utf-8') as f:
-        f.write("""
+        f.write(f"""
         <!DOCTYPE html>
-        <html>
+        <html dir="rtl" lang="fa">
         <head>
             <title>ورود به سیستم مانیتورینگ توییتر</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-                .form-group { margin-bottom: 15px; }
-                .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
-                h1 { color: #1DA1F2; }
-                input[type="text"], input[type="password"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
-                label { display: block; margin-bottom: 5px; font-weight: bold; }
-                .flash-message { padding: 10px; background-color: #f8d7da; color: #721c24; border-radius: 4px; margin-bottom: 15px; }
-                .register-link { margin-top: 20px; }
+                {base_styles}
+                .login-container {
+                    max-width: 450px;
+                    width: 100%;
+                    margin: 2rem auto;
+                    padding: 2.5rem;
+                    background: white;
+                    border-radius: 20px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                }
+                .welcome-text {
+                    text-align: center;
+                    color: var(--text-secondary);
+                    margin-bottom: 2rem;
+                }
+                .register-link {
+                    text-align: center;
+                    margin-top: 2rem;
+                    padding-top: 1.5rem;
+                    border-top: 1px solid var(--border);
+                }
+                .register-link a {
+                    color: var(--primary);
+                    text-decoration: none;
+                    font-weight: 500;
+                }
+                .register-link a:hover {
+                    text-decoration: underline;
+                }
+                .btn-login {
+                    width: 100%;
+                    margin-top: 1rem;
+                }
             </style>
         </head>
         <body>
+            <div class="login-container">
             <h1>ورود به سیستم مانیتورینگ توییتر</h1>
 
             {% with messages = get_flashed_messages() %}
@@ -626,15 +765,108 @@ def create_templates():
 
     # ایجاد قالب داشبورد
     with open('templates/dashboard.html', 'w', encoding='utf-8') as f:
-        f.write("""
+        f.write(f"""
 <!DOCTYPE html>
-<html>
+<html dir="rtl" lang="fa">
 <head>
     <title>داشبورد مانیتورینگ توییتر</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        {base_styles}
+        .dashboard-container {
+            display: grid;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--border);
+        }
+        .monitor-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .user-list {
+            display: grid;
+            gap: 1rem;
+        }
+        .user-item {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        .user-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .username {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .monitor-type {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: rgba(29,161,242,0.1);
+            color: var(--primary);
+            border-radius: 50px;
+            font-size: 0.875rem;
+            margin-right: 0.5rem;
+        }
+        .status-card {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-top: 2rem;
+        }
+        .status-card p {
+            margin: 0.5rem 0;
+            opacity: 0.9;
+        }
+        .radio-group {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1rem 0;
+        }
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .radio-group label:hover {
+            background: rgba(29,161,242,0.05);
+        }
+        .radio-group input[type="radio"] {
+            margin-left: 0.75rem;
+        }
+        .logout-link {
+            color: var(--danger);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        .logout-link:hover {
+            background: rgba(224,36,94,0.1);
+        }
         .form-group { margin-bottom: 15px; }
         .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
         .user-list { margin-top: 30px; }
@@ -743,15 +975,74 @@ def create_templates():
 
     # ایجاد قالب نمایش توییت‌ها
     with open('templates/tweets.html', 'w', encoding='utf-8') as f:
-        f.write("""
+        f.write(f"""
         <!DOCTYPE html>
-        <html>
+        <html dir="rtl" lang="fa">
         <head>
             <title>توییت‌های @{{ username }}</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                {base_styles}
+                .tweets-container {
+                    max-width: 800px;
+                    width: 100%;
+                    margin: 0 auto;
+                }
+                .tweet {
+                    background: white;
+                    padding: 1.5rem;
+                    border-radius: 16px;
+                    margin-bottom: 1rem;
+                    border: 1px solid var(--border);
+                    transition: all 0.3s ease;
+                }
+                .tweet:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+                }
+                .tweet-header {
+                    color: var(--text-secondary);
+                    font-size: 0.9rem;
+                    margin-bottom: 0.75rem;
+                }
+                .tweet-content {
+                    font-size: 1.1rem;
+                    line-height: 1.5;
+                    margin-bottom: 1rem;
+                }
+                .tweet-link {
+                    display: inline-flex;
+                    align-items: center;
+                    color: var(--primary);
+                    text-decoration: none;
+                    font-weight: 500;
+                    padding: 0.5rem 1rem;
+                    border-radius: 50px;
+                    background: rgba(29,161,242,0.1);
+                }
+                .tweet-link:hover {
+                    background: rgba(29,161,242,0.2);
+                }
+                .back-link {
+                    display: inline-flex;
+                    align-items: center;
+                    color: var(--text-secondary);
+                    text-decoration: none;
+                    font-weight: 500;
+                    margin-bottom: 2rem;
+                }
+                .back-link:hover {
+                    color: var(--text);
+                }
+                .stats {
+                    background: white;
+                    padding: 1rem 1.5rem;
+                    border-radius: 12px;
+                    margin-bottom: 2rem;
+                    border: 1px solid var(--border);
+                    color: var(--text-secondary);
+                }
                 .tweet { padding: 15px; border: 1px solid #eee; margin-bottom: 15px; border-radius: 5px; }
                 .tweet:hover { background-color: #f8f9fa; }
                 .tweet-header { margin-bottom: 10px; color: #666; font-size: 0.9em; }

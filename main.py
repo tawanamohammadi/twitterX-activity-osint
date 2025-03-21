@@ -342,7 +342,6 @@ def get_status():
 def create_templates():
     os.makedirs('templates', exist_ok=True)
 
-# ... existing code ...
     with open('templates/index.html', 'w', encoding='utf-8') as f:
         f.write("""
         <!DOCTYPE html>
@@ -389,12 +388,13 @@ def create_templates():
                     box-shadow: 0 4px 8px rgba(29,161,242,0.2);
                 }
                 .user-list {
-                    margin-top: 40px;
+                    margin-top: 48px;
                 }
                 .user-item {
-                    padding: 15px;
+                    padding: 20px;
+                    background: var(--bg);
                     border: 1px solid var(--border);
-                    margin-bottom: 10px;
+                    margin-bottom: 16px;
                     border-radius: 12px;
                     display: flex;
                     justify-content: space-between;
@@ -418,9 +418,10 @@ def create_templates():
                     background: rgba(29,161,242,0.1);
                 }
                 h1, h2 {
-                    color: var(--primary);
-                    font-weight: 800;
-                    letter-spacing: -0.5px;
+                    color: var(--text);
+                    font-weight: 700;
+                    letter-spacing: -0.025em;
+                    margin-bottom: 1.5em;
                 }
                 input[type="text"] {
                     padding: 12px;
@@ -576,9 +577,9 @@ def create_templates():
                     background: rgba(29,161,242,0.1);
                 }
                 h1 {
-                    color: var(--primary);
-                    font-weight: 800;
-                    letter-spacing: -0.5px;
+                    color: var(--text);
+                    font-weight: 700;
+                    letter-spacing: -0.025em;
                     margin: 20px 0 30px;
                 }
                 .no-tweets {

@@ -6,17 +6,111 @@
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-                .form-group { margin-bottom: 15px; }
-                .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
-                .user-list { margin-top: 30px; }
-                .user-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-                .action-links a { margin-left: 10px; color: #1DA1F2; text-decoration: none; }
-                .action-links a:hover { text-decoration: underline; }
-                h1, h2 { color: #1DA1F2; }
-                input[type="text"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
-                label { display: block; margin-bottom: 5px; font-weight: bold; }
-                .status { padding: 10px; background-color: #f8f9fa; border-radius: 4px; margin-top: 20px; }
+                :root {
+                    --primary: #1DA1F2;
+                    --bg: #ffffff;
+                    --text: #14171A;
+                    --secondary-bg: #f8f9fa;
+                    --border: #E1E8ED;
+                }
+                body { 
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+                    max-width: 800px;
+                    margin: 0 auto;
+                    padding: 20px;
+                    background: var(--bg);
+                    color: var(--text);
+                }
+                .form-group {
+                    margin-bottom: 20px;
+                    background: var(--secondary-bg);
+                    padding: 20px;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                }
+                .btn {
+                    padding: 12px 24px;
+                    background: var(--primary);
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    border-radius: 50px;
+                    font-weight: 600;
+                    transition: all 0.2s;
+                }
+                .btn:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 8px rgba(29,161,242,0.2);
+                }
+                .user-list {
+                    margin-top: 40px;
+                }
+                .user-item {
+                    padding: 15px;
+                    border: 1px solid var(--border);
+                    margin-bottom: 10px;
+                    border-radius: 12px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    transition: all 0.2s;
+                }
+                .user-item:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+                }
+                .action-links a {
+                    margin-left: 15px;
+                    color: var(--primary);
+                    text-decoration: none;
+                    font-weight: 500;
+                    padding: 6px 12px;
+                    border-radius: 50px;
+                    transition: all 0.2s;
+                }
+                .action-links a:hover {
+                    background: rgba(29,161,242,0.1);
+                }
+                h1, h2 {
+                    color: var(--primary);
+                    font-weight: 800;
+                    letter-spacing: -0.5px;
+                }
+                input[type="text"] {
+                    padding: 12px;
+                    width: 100%;
+                    max-width: 300px;
+                    border: 2px solid var(--border);
+                    border-radius: 8px;
+                    font-size: 16px;
+                    transition: all 0.2s;
+                }
+                input[type="text"]:focus {
+                    border-color: var(--primary);
+                    outline: none;
+                    box-shadow: 0 0 0 3px rgba(29,161,242,0.2);
+                }
+                label {
+                    display: block;
+                    margin-bottom: 8px;
+                    font-weight: 600;
+                    color: var(--text);
+                }
+                .status {
+                    padding: 15px;
+                    background: var(--secondary-bg);
+                    border-radius: 12px;
+                    margin-top: 30px;
+                    border: 1px solid var(--border);
+                }
+                .checkbox-wrapper {
+                    display: flex;
+                    align-items: center;
+                    margin-top: 10px;
+                }
+                input[type="checkbox"] {
+                    margin-right: 8px;
+                }
             </style>
         </head>
         <body>

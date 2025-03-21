@@ -1,135 +1,60 @@
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Twitter Monitor</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            background: #f8f9fa;
-            color: #333;
-            line-height: 1.6;
-        }
-        .form-group { 
-            margin-bottom: 1.5rem;
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .btn { 
-            padding: 0.8rem 1.5rem;
-            background: #1DA1F2;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 6px;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: background 0.2s;
-        }
-        .btn:hover {
-            background: #1a91da;
-        }
-        .user-list {
-            margin-top: 2rem;
-        }
-        .user-item {
-            padding: 1rem;
-            background: white;
-            border-radius: 8px;
-            margin-bottom: 1rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .action-links a {
-            color: #1DA1F2;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: background 0.2s;
-        }
-        .action-links a:hover {
-            background: #f0f7ff;
-        }
-        h1, h2 {
-            color: #1DA1F2;
-            margin-bottom: 1.5rem;
-        }
-        input[type="text"] {
-            padding: 0.8rem;
-            width: 100%;
-            max-width: 300px;
-            border: 2px solid #e1e8ed;
-            border-radius: 6px;
-            font-size: 1rem;
-            transition: border-color 0.2s;
-        }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: #1DA1F2;
-        }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #444;
-        }
-        .status {
-            padding: 1rem;
-            background: white;
-            border-radius: 8px;
-            margin-top: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .status p {
-            margin: 0.5rem 0;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-    <h1>Twitter Monitor</h1>
-    <form action="/start_monitoring" method="post">
-        <div class="form-group">
-            <label>Twitter Username (without @):</label>
-            <input type="text" name="username" required>
-        </div>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" name="reset_history"> Reset tweet history
-            </label>
-        </div>
-        <button type="submit" class="btn">Start Monitoring</button>
-    </form>
-
-    <div class="user-list">
-        <h2>Active Monitors</h2>
-        {% if active_usernames %}
-            {% for username in active_usernames %}
-                <div class="user-item">
-                    <span>@{{ username }}</span>
-                    <div class="action-links">
-                        <a href="/tweets/{{ username }}">View Tweets</a> | 
-                        <a href="/stop_monitoring/{{ username }}">Stop Monitoring</a>
-                    </div>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Twitter Monitor</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                .form-group { margin-bottom: 15px; }
+                .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
+                .user-list { margin-top: 30px; }
+                .user-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+                .action-links a { margin-left: 10px; color: #1DA1F2; text-decoration: none; }
+                .action-links a:hover { text-decoration: underline; }
+                h1, h2 { color: #1DA1F2; }
+                input[type="text"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
+                label { display: block; margin-bottom: 5px; font-weight: bold; }
+                .status { padding: 10px; background-color: #f8f9fa; border-radius: 4px; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <h1>Twitter Monitor</h1>
+            <form action="/start_monitoring" method="post">
+                <div class="form-group">
+                    <label>Twitter Username (without @):</label>
+                    <input type="text" name="username" required>
                 </div>
-            {% endfor %}
-        {% else %}
-            <p>No active monitors</p>
-        {% endif %}
-    </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="reset_history"> Reset tweet history
+                    </label>
+                </div>
+                <button type="submit" class="btn">Start Monitoring</button>
+            </form>
 
-    <div class="status">
-        <p>Status: {{ 'Active' if is_monitoring_active else 'Idle' }}</p>
-        <p>Monitoring {{ active_usernames|length }} account(s)</p>
-    </div>
-</body>
-</html>
+            <div class="user-list">
+                <h2>Active Monitors</h2>
+                {% if active_usernames %}
+                    {% for username in active_usernames %}
+                        <div class="user-item">
+                            <span>@{{ username }}</span>
+                            <div class="action-links">
+                                <a href="/tweets/{{ username }}">View Tweets</a> | 
+                                <a href="/stop_monitoring/{{ username }}">Stop Monitoring</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No active monitors</p>
+                {% endif %}
+            </div>
+
+            <div class="status">
+                <p>Status: {{ 'Active' if is_monitoring_active else 'Idle' }}</p>
+                <p>Monitoring {{ active_usernames|length }} account(s)</p>
+            </div>
+        </body>
+        </html>
+        

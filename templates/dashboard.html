@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>داشبورد مانیتورینگ توییتر</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        .user-list { margin-top: 30px; }
+        .user-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .action-links a { margin-left: 10px; color: #1DA1F2; text-decoration: none; }
+        .action-links a:hover { text-decoration: underline; }
+        h1, h2 { color: #1DA1F2; }
+        input[type="text"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .status { padding: 10px; background-color: #f8f9fa; border-radius: 4px; margin-top: 20px; }
+        .flash-message { padding: 10px; background-color: #d4edda; color: #155724; border-radius: 4px; margin-bottom: 15px; }
+        .logout-link { float: right; }
+        .header { display: flex; justify-content: space-between; align-items: center; }
+        .radio-group { margin-bottom: 10px; }
+        .radio-group label { display: inline-block; margin-right: 15px; font-weight: normal; }
+        .monitor-type { font-size: 0.8em; color: #666; margin-left: 5px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>داشبورد مانیتورینگ توییتر</h1>
+        <a href="/logout" class="logout-link">خروج</a>
+    </div>
+
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form action="/start_monitoring" method="post">
+        <div class="form-group">
+            <label>نام کاربری توییتر (بدون @):</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+            <label>نوع مانیتورینگ:</label>
+            <div class="radio-group">
+                <label>
+                    <input type="radio" name="monitor_type" value="tweets_only" checked> 
+                    فقط توییت‌های اصلی
+                </label><br>
+                <label>
+                    <input type="radio" name="monitor_type" value="tweets_replies"> 
+                    توییت‌ها و ریپلای‌ها
+                </label><br>
+                <label>
+                    <input type="radio" name="monitor_type" value="all_activity"> 
+                    همه فعالیت‌ها (توییت‌ها، ریپلای‌ها و منشن‌ها)
+                </label>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="reset_history"> پاک کردن تاریخچه توییت‌ها
+            </label>
+        </div>
+        <button type="submit" class="btn">شروع مانیتورینگ</button>
+    </form>
+
+    <div class="user-list">
+        <h2>مانیتورهای فعال</h2>
+        {% if active_usernames %}
+            {% for user_monitor in active_usernames %}
+                <div class="user-item">
+                    {% if user_monitor is string %}
+                        <span>@{{ user_monitor }}</span>
+                        <div class="action-links">
+                            <a href="/tweets/{{ user_monitor }}">مشاهده توییت‌ها</a> | 
+                            <a href="/stop_monitoring/{{ user_monitor }}">توقف مانیتورینگ</a>
+                        </div>
+                    {% else %}
+                        <span>
+                            @{{ user_monitor.username }}
+                            <span class="monitor-type">
+                                {% if user_monitor.monitor_type == 'tweets_only' %}
+                                    (فقط توییت‌های اصلی)
+                                {% elif user_monitor.monitor_type == 'tweets_replies' %}
+                                    (توییت‌ها و ریپلای‌ها)
+                                {% elif user_monitor.monitor_type == 'all_activity' %}
+                                    (همه فعالیت‌ها)
+                                {% endif %}
+                            </span>
+                        </span>
+                        <div class="action-links">
+                            <a href="/tweets/{{ user_monitor.username }}">مشاهده توییت‌ها</a> | 
+                            <a href="/stop_monitoring/{{ user_monitor.username }}">توقف مانیتورینگ</a>
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>هیچ مانیتور فعالی وجود ندارد</p>
+        {% endif %}
+    </div>
+
+    <div class="status">
+        <p>وضعیت: {{ 'فعال' if is_monitoring_active else 'غیرفعال' }}</p>
+        <p>در حال مانیتورینگ {{ active_usernames|length }} حساب</p>
+    </div>
+</body>
+</html>
+        

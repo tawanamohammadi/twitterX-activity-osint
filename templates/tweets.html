@@ -2,103 +2,29 @@
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Tweets for @{{ username }}</title>
+            <title>توییت‌های @{{ username }}</title>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-                :root {
-                    --primary: #1DA1F2;
-                    --bg: #ffffff;
-                    --text: #14171A;
-                    --secondary-text: #657786;
-                    --secondary-bg: #f8f9fa;
-                    --border: #E1E8ED;
-                }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    max-width: 800px;
-                    margin: 0 auto;
-                    padding: 20px;
-                    background: var(--bg);
-                    color: var(--text);
-                }
-                .tweet {
-                    padding: 20px;
-                    border: 1px solid var(--border);
-                    margin-bottom: 20px;
-                    border-radius: 16px;
-                    transition: all 0.2s;
-                    background: var(--bg);
-                }
-                .tweet:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-                }
-                .tweet-header {
-                    margin-bottom: 12px;
-                    color: var(--secondary-text);
-                    font-size: 0.9em;
-                    display: flex;
-                    align-items: center;
-                }
-                .tweet-content {
-                    margin-bottom: 15px;
-                    line-height: 1.5;
-                    font-size: 16px;
-                }
-                .tweet-link {
-                    color: var(--primary);
-                    text-decoration: none;
-                    display: inline-block;
-                    padding: 8px 16px;
-                    border-radius: 50px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                    font-size: 0.9em;
-                }
-                .tweet-link:hover {
-                    background: rgba(29,161,242,0.1);
-                }
-                .back-link {
-                    display: inline-flex;
-                    align-items: center;
-                    margin-bottom: 30px;
-                    color: var(--primary);
-                    text-decoration: none;
-                    font-weight: 600;
-                    padding: 8px 16px;
-                    border-radius: 50px;
-                    transition: all 0.2s;
-                }
-                .back-link:hover {
-                    background: rgba(29,161,242,0.1);
-                }
-                h1 {
-                    color: var(--primary);
-                    font-weight: 800;
-                    letter-spacing: -0.5px;
-                    margin: 20px 0 30px;
-                }
-                .no-tweets {
-                    padding: 40px;
-                    background: var(--secondary-bg);
-                    border-radius: 16px;
-                    text-align: center;
-                    border: 1px solid var(--border);
-                }
-                .tweet-count {
-                    color: var(--secondary-text);
-                    margin-bottom: 20px;
-                    font-size: 0.9em;
-                }
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                .tweet { padding: 15px; border: 1px solid #eee; margin-bottom: 15px; border-radius: 5px; }
+                .tweet:hover { background-color: #f8f9fa; }
+                .tweet-header { margin-bottom: 10px; color: #666; font-size: 0.9em; }
+                .tweet-content { margin-bottom: 10px; }
+                .tweet-link { color: #1DA1F2; text-decoration: none; display: inline-block; margin-top: 5px; }
+                .tweet-link:hover { text-decoration: underline; }
+                .back-link { display: inline-block; margin-bottom: 20px; color: #1DA1F2; text-decoration: none; }
+                .back-link:hover { text-decoration: underline; }
+                h1 { color: #1DA1F2; }
+                .no-tweets { padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center; }
             </style>
         </head>
         <body>
-            <a href="/" class="back-link">← Back to Monitor</a>
-            <h1>Tweets for @{{ username }}</h1>
+            <a href="/dashboard" class="back-link">← بازگشت به داشبورد</a>
+            <h1>توییت‌های @{{ username }}</h1>
 
             {% if tweets %}
-                <p>Found {{ tweets|length }} tweets</p>
+                <p>{{ tweets|length }} توییت یافت شد</p>
                 {% for tweet in tweets %}
                     <div class="tweet">
                         <div class="tweet-header">
@@ -107,12 +33,12 @@
                         <div class="tweet-content">
                             {{ tweet.title }}
                         </div>
-                        <a href="{{ tweet.link }}" target="_blank" class="tweet-link">View on Twitter</a>
+                        <a href="{{ tweet.link }}" target="_blank" class="tweet-link">مشاهده در توییتر</a>
                     </div>
                 {% endfor %}
             {% else %}
                 <div class="no-tweets">
-                    <p>No tweets found for @{{ username }}</p>
+                    <p>هیچ توییتی برای @{{ username }} یافت نشد</p>
                 </div>
             {% endif %}
         </body>

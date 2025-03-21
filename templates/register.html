@@ -1,0 +1,47 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>ثبت‌نام در سیستم مانیتورینگ توییتر</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                .form-group { margin-bottom: 15px; }
+                .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
+                h1 { color: #1DA1F2; }
+                input[type="text"], input[type="password"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
+                label { display: block; margin-bottom: 5px; font-weight: bold; }
+                .flash-message { padding: 10px; background-color: #f8d7da; color: #721c24; border-radius: 4px; margin-bottom: 15px; }
+                .login-link { margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <h1>ثبت‌نام در سیستم مانیتورینگ توییتر</h1>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="/register" method="post">
+                <div class="form-group">
+                    <label>نام کاربری:</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>رمز عبور:</label>
+                    <input type="password" name="password" required>
+                </div>
+                <button type="submit" class="btn">ثبت‌نام</button>
+            </form>
+
+            <div class="login-link">
+                <p>قبلاً ثبت‌نام کرده‌اید؟ <a href="/login">وارد شوید</a></p>
+            </div>
+        </body>
+        </html>
+        

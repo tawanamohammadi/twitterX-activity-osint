@@ -1,10 +1,17 @@
-[project]
-name = "python-template"
+[tool.poetry]
+name = "twitter-monitor"
 version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
-requires-python = ">=3.11"
-dependencies = [
-    "feedparser>=6.0.11",
-    "flask>=3.1.0",
-]
+description = "A Twitter monitoring application with user authentication"
+authors = ["Your Name <your.email@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+flask = "^2.0.1"
+feedparser = "^6.0.8"
+werkzeug = "^2.0.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

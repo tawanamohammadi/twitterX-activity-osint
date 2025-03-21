@@ -1,46 +1,117 @@
 
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Tweets for @{{ username }}</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-                .tweet { padding: 15px; border: 1px solid #eee; margin-bottom: 15px; border-radius: 5px; }
-                .tweet:hover { background-color: #f8f9fa; }
-                .tweet-header { margin-bottom: 10px; color: #666; font-size: 0.9em; }
-                .tweet-content { margin-bottom: 10px; }
-                .tweet-link { color: #1DA1F2; text-decoration: none; display: inline-block; margin-top: 5px; }
-                .tweet-link:hover { text-decoration: underline; }
-                .back-link { display: inline-block; margin-bottom: 20px; color: #1DA1F2; text-decoration: none; }
-                .back-link:hover { text-decoration: underline; }
-                h1 { color: #1DA1F2; }
-                .no-tweets { padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center; }
-            </style>
-        </head>
-        <body>
-            <a href="/" class="back-link">← Back to Monitor</a>
-            <h1>Tweets for @{{ username }}</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tweets for @{{ username }}</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --primary: #1DA1F2;
+            --bg: #ffffff;
+            --text: #14171A;
+            --border: #E1E8ED;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .tweet {
+            padding: 20px;
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+            border-radius: 12px;
+            transition: transform 0.2s;
+        }
+        .tweet:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .tweet-header {
+            color: #657786;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+        .tweet-content {
+            margin-bottom: 16px;
+            font-size: 16px;
+        }
+        .tweet-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-block;
+            padding: 8px 16px;
+            border: 1px solid var(--primary);
+            border-radius: 50px;
+            transition: all 0.2s;
+        }
+        .tweet-link:hover {
+            background: var(--primary);
+            color: white;
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 24px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            color: var(--text);
+            margin-bottom: 24px;
+        }
+        .no-tweets {
+            padding: 32px;
+            background-color: #F5F8FA;
+            border-radius: 12px;
+            text-align: center;
+            color: #657786;
+        }
+        .tweet-count {
+            color: #657786;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Monitor</a>
+        <h1>Tweets for @{{ username }}</h1>
 
-            {% if tweets %}
-                <p>Found {{ tweets|length }} tweets</p>
-                {% for tweet in tweets %}
-                    <div class="tweet">
-                        <div class="tweet-header">
-                            {{ tweet.published }}
-                        </div>
-                        <div class="tweet-content">
-                            {{ tweet.title }}
-                        </div>
-                        <a href="{{ tweet.link }}" target="_blank" class="tweet-link">View on Twitter</a>
+        {% if tweets %}
+            <p class="tweet-count">Found {{ tweets|length }} tweets</p>
+            {% for tweet in tweets %}
+                <div class="tweet">
+                    <div class="tweet-header">
+                        {{ tweet.published }}
                     </div>
-                {% endfor %}
-            {% else %}
-                <div class="no-tweets">
-                    <p>No tweets found for @{{ username }}</p>
+                    <div class="tweet-content">
+                        {{ tweet.title }}
+                    </div>
+                    <a href="{{ tweet.link }}" target="_blank" class="tweet-link">View on Twitter</a>
                 </div>
-            {% endif %}
-        </body>
-        </html>
-        
+            {% endfor %}
+        {% else %}
+            <div class="no-tweets">
+                <p>No tweets found for @{{ username }}</p>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

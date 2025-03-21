@@ -1,0 +1,46 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Tweets for @{{ username }}</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                .tweet { padding: 15px; border: 1px solid #eee; margin-bottom: 15px; border-radius: 5px; }
+                .tweet:hover { background-color: #f8f9fa; }
+                .tweet-header { margin-bottom: 10px; color: #666; font-size: 0.9em; }
+                .tweet-content { margin-bottom: 10px; }
+                .tweet-link { color: #1DA1F2; text-decoration: none; display: inline-block; margin-top: 5px; }
+                .tweet-link:hover { text-decoration: underline; }
+                .back-link { display: inline-block; margin-bottom: 20px; color: #1DA1F2; text-decoration: none; }
+                .back-link:hover { text-decoration: underline; }
+                h1 { color: #1DA1F2; }
+                .no-tweets { padding: 20px; background-color: #f8f9fa; border-radius: 5px; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <a href="/" class="back-link">← Back to Monitor</a>
+            <h1>Tweets for @{{ username }}</h1>
+
+            {% if tweets %}
+                <p>Found {{ tweets|length }} tweets</p>
+                {% for tweet in tweets %}
+                    <div class="tweet">
+                        <div class="tweet-header">
+                            {{ tweet.published }}
+                        </div>
+                        <div class="tweet-content">
+                            {{ tweet.title }}
+                        </div>
+                        <a href="{{ tweet.link }}" target="_blank" class="tweet-link">View on Twitter</a>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-tweets">
+                    <p>No tweets found for @{{ username }}</p>
+                </div>
+            {% endif %}
+        </body>
+        </html>
+        

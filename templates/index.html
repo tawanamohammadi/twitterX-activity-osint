@@ -1,0 +1,60 @@
+
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Twitter Monitor</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+                .form-group { margin-bottom: 15px; }
+                .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
+                .user-list { margin-top: 30px; }
+                .user-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+                .action-links a { margin-left: 10px; color: #1DA1F2; text-decoration: none; }
+                .action-links a:hover { text-decoration: underline; }
+                h1, h2 { color: #1DA1F2; }
+                input[type="text"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
+                label { display: block; margin-bottom: 5px; font-weight: bold; }
+                .status { padding: 10px; background-color: #f8f9fa; border-radius: 4px; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <h1>Twitter Monitor</h1>
+            <form action="/start_monitoring" method="post">
+                <div class="form-group">
+                    <label>Twitter Username (without @):</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="reset_history"> Reset tweet history
+                    </label>
+                </div>
+                <button type="submit" class="btn">Start Monitoring</button>
+            </form>
+
+            <div class="user-list">
+                <h2>Active Monitors</h2>
+                {% if active_usernames %}
+                    {% for username in active_usernames %}
+                        <div class="user-item">
+                            <span>@{{ username }}</span>
+                            <div class="action-links">
+                                <a href="/tweets/{{ username }}">View Tweets</a> | 
+                                <a href="/stop_monitoring/{{ username }}">Stop Monitoring</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No active monitors</p>
+                {% endif %}
+            </div>
+
+            <div class="status">
+                <p>Status: {{ 'Active' if is_monitoring_active else 'Idle' }}</p>
+                <p>Monitoring {{ active_usernames|length }} account(s)</p>
+            </div>
+        </body>
+        </html>
+        

@@ -185,7 +185,9 @@ def parse_tweet_date(date_str):
             print(f"Could not parse date: {date_str}")
             return None
 
-def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_history=False, monitor_type='tweets_only'):
+def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_history=False, monitor_type='tweets_only', max_retries=3):
+    cache = {}
+    retry_count = 0
     """Monitor search results for a specific query"""
     # URL encode the query to handle special characters
     encoded_query = query.replace(' ', '%20')
@@ -219,6 +221,16 @@ def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_histor
             print(f"[Search: {query}] Checking for new tweets... ({current_time})")
 
             if feed.entries:
+                # کش کردن نتایج برای پردازش سریع‌تر
+                current_entries = {entry.id: entry for entry in feed.entries}
+                
+                # حذف توییت‌های تکراری از کش
+                new_entries = {id: entry for id, entry in current_entries.items() 
+                             if id not in cache}
+                
+                # بروزرسانی کش
+                cache.update(new_entries)
+                
                 if last_entry_id is None:
                     # Find the first tweet that matches our criteria
                     for entry in feed.entries:
@@ -266,14 +278,29 @@ def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_histor
             time.sleep(check_interval)
 
         except Exception as e:
-            print(f"[Search: {query}] Error: {str(e)}")
-            print(f"Retrying in {check_interval} seconds...")
-            time.sleep(check_interval)
+            retry_count += 1
+            error_msg = f"[Search: {query}] Error: {str(e)}"
+            print(error_msg)
+            
+            if retry_count >= max_retries:
+                print(f"[Search: {query}] Max retries ({max_retries}) reached. Waiting longer...")
+                time.sleep(check_interval * 2)
+                retry_count = 0
+            else:
+                print(f"[Search: {query}] Retry {retry_count}/{max_retries} in {check_interval} seconds...")
+                time.sleep(check_interval)
+            
+            # لاگ کردن خطا
+            logging.error(error_msg)
+            continue
 
     print(f"[Search: {query}] Monitoring stopped.")
 
 # تابع برای شروع مانیتورینگ یک کاربر
-def start_monitoring_for_user(user_id, username, monitor_type='tweets_only', reset_history=False):
+from concurrent.futures import ThreadPoolExecutor
+
+def start_monitoring_for_user(user_id, username, monitor_type='tweets_only', reset_history=False, max_workers=3):
+    thread_pool = ThreadPoolExecutor(max_workers=max_workers)
     global active_usernames, is_monitoring_active
 
     if user_id not in active_usernames:

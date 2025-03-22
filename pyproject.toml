@@ -9,6 +9,9 @@ python = "^3.8"
 flask = "^2.0.1"
 feedparser = "^6.0.8"
 werkzeug = "^2.0.1"
+beautifulsoup4 = "^4.13.3"
+flask-socketio = "^5.5.1"
+requests = "^2.32.3"
 
 [tool.poetry.dev-dependencies]
 

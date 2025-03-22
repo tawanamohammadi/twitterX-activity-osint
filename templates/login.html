@@ -1,47 +1,174 @@
 
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>ورود به سیستم مانیتورینگ توییتر</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-                .form-group { margin-bottom: 15px; }
-                .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
-                h1 { color: #1DA1F2; }
-                input[type="text"], input[type="password"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
-                label { display: block; margin-bottom: 5px; font-weight: bold; }
-                .flash-message { padding: 10px; background-color: #f8d7da; color: #721c24; border-radius: 4px; margin-bottom: 15px; }
-                .register-link { margin-top: 20px; }
-            </style>
-        </head>
-        <body>
-            <h1>ورود به سیستم مانیتورینگ توییتر</h1>
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <title>ورود به سیستم مانیتورینگ توییتر</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* استایل‌های پایه */
+        :root {
+            --primary: #1DA1F2;
+            --primary-dark: #1a91da;
+            --bg: #ffffff;
+            --text: #14171A;
+            --text-secondary: #657786;
+            --border: #E1E8ED;
+            --danger: #E0245E;
+            --success: #17BF63;
+        }
 
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="flash-message">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-            <form action="/login" method="post">
-                <div class="form-group">
-                    <label>نام کاربری:</label>
-                    <input type="text" name="username" required>
-                </div>
-                <div class="form-group">
-                    <label>رمز عبور:</label>
-                    <input type="password" name="password" required>
-                </div>
-                <button type="submit" class="btn">ورود</button>
-            </form>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f7f9fa;
+            color: var(--text);
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            direction: rtl;
+        }
 
-            <div class="register-link">
-                <p>حساب کاربری ندارید؟ <a href="/register">ثبت‌نام کنید</a></p>
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: var(--primary-dark);
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .flash-message {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .login-container {
+            max-width: 500px;
+            margin: 5rem auto;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .twitter-icon {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container container">
+        <div class="twitter-icon">
+            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path>
+            </svg>
+        </div>
+        <h1 style="text-align: center;">ورود به سیستم مانیتورینگ توییتر</h1>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash-message error">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form action="/login" method="post">
+            <div class="form-group">
+                <label>نام کاربری:</label>
+                <input type="text" name="username" required>
             </div>
-        </body>
-        </html>
-        
+            <div class="form-group">
+                <label>رمز عبور:</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit" class="btn" style="width: 100%;">ورود</button>
+        </form>
+    </div>
+
+    <div class="register-link">
+        <p>حساب کاربری ندارید؟ <a href="/register">ثبت‌نام کنید</a></p>
+    </div>
+</body>
+</html>
+    

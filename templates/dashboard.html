@@ -1,28 +1,260 @@
 
 <!DOCTYPE html>
-<html>
+<html dir="rtl" lang="fa">
 <head>
     <title>داشبورد مانیتورینگ توییتر</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-        .form-group { margin-bottom: 15px; }
-        .btn { padding: 8px 15px; background: #1DA1F2; color: white; border: none; cursor: pointer; border-radius: 4px; }
-        .user-list { margin-top: 30px; }
-        .user-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-        .action-links a { margin-left: 10px; color: #1DA1F2; text-decoration: none; }
-        .action-links a:hover { text-decoration: underline; }
-        h1, h2 { color: #1DA1F2; }
-        input[type="text"] { padding: 8px; width: 100%; max-width: 300px; border: 1px solid #ddd; border-radius: 4px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .status { padding: 10px; background-color: #f8f9fa; border-radius: 4px; margin-top: 20px; }
-        .flash-message { padding: 10px; background-color: #d4edda; color: #155724; border-radius: 4px; margin-bottom: 15px; }
-        .logout-link { float: right; }
-        .header { display: flex; justify-content: space-between; align-items: center; }
-        .radio-group { margin-bottom: 10px; }
-        .radio-group label { display: inline-block; margin-right: 15px; font-weight: normal; }
-        .monitor-type { font-size: 0.8em; color: #666; margin-left: 5px; }
+        /* استایل‌های پایه */
+        :root {
+            --primary: #1DA1F2;
+            --primary-dark: #1a91da;
+            --bg: #ffffff;
+            --text: #14171A;
+            --text-secondary: #657786;
+            --border: #E1E8ED;
+            --danger: #E0245E;
+            --success: #17BF63;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f7f9fa;
+            color: var(--text);
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: var(--primary-dark);
+        }
+
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .flash-message {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .logout-link {
+            padding: 0.5rem 1rem;
+            background: rgba(29,161,242,0.1);
+            border-radius: 50px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .logout-link:hover {
+            background: rgba(29,161,242,0.2);
+        }
+
+        .user-list {
+            margin-top: 1.5rem;
+        }
+
+        .user-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .user-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-item:hover {
+            background: rgba(29,161,242,0.05);
+        }
+
+        .action-links a {
+            margin-right: 1rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 4px;
+            background: rgba(29,161,242,0.1);
+            transition: all 0.2s;
+        }
+
+        .action-links a:hover {
+            background: rgba(29,161,242,0.2);
+        }
+
+        .action-links a.stop-btn {
+            background: rgba(224,36,94,0.1);
+            color: var(--danger);
+        }
+
+        .action-links a.stop-btn:hover {
+            background: rgba(224,36,94,0.2);
+        }
+
+        .status-container {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 2rem;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .radio-group {
+            margin-bottom: 1rem;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-weight: normal;
+        }
+
+        .radio-group input[type="radio"] {
+            margin-left: 0.5rem;
+        }
+
+        .monitor-type {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-right: 0.5rem;
+            background: rgba(101,119,134,0.1);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            background: rgba(101,119,134,0.05);
+            border-radius: 8px;
+        }
+
+        .username {
+            display: flex;
+            align-items: center;
+        }
+
+        .username svg {
+            margin-left: 0.5rem;
+            color: var(--primary);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: rgba(23,191,99,0.1);
+            color: var(--success);
+        }
+
+        .status-inactive {
+            background: rgba(101,119,134,0.1);
+            color: var(--text-secondary);
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+        }
+
+        .checkbox-wrapper input[type="checkbox"] {
+            margin-left: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -39,76 +271,96 @@
         {% endif %}
     {% endwith %}
 
-    <form action="/start_monitoring" method="post">
-        <div class="form-group">
-            <label>نام کاربری توییتر (بدون @):</label>
-            <input type="text" name="username" required>
-        </div>
-        <div class="form-group">
-            <label>نوع مانیتورینگ:</label>
-            <div class="radio-group">
-                <label>
-                    <input type="radio" name="monitor_type" value="tweets_only" checked> 
-                    فقط توییت‌های اصلی
-                </label><br>
-                <label>
-                    <input type="radio" name="monitor_type" value="tweets_replies"> 
-                    توییت‌ها و ریپلای‌ها
-                </label><br>
-                <label>
-                    <input type="radio" name="monitor_type" value="all_activity"> 
-                    همه فعالیت‌ها (توییت‌ها، ریپلای‌ها و منشن‌ها)
+    <div class="container">
+        <h2>افزودن مانیتور جدید</h2>
+        <form action="/start_monitoring" method="post">
+            <div class="form-group">
+                <label>نام کاربری توییتر (بدون @):</label>
+                <input type="text" name="username" required placeholder="مثال: elonmusk">
+            </div>
+            <div class="form-group">
+                <label>نوع مانیتورینگ:</label>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="monitor_type" value="tweets_only" checked> 
+                        <span class="radio-text">فقط توییت‌های اصلی</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="monitor_type" value="tweets_replies"> 
+                        <span class="radio-text">توییت‌ها و ریپلای‌ها</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="monitor_type" value="all_activity"> 
+                        <span class="radio-text">همه فعالیت‌ها (توییت‌ها، ریپلای‌ها و منشن‌ها)</span>
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="reset_history"> 
+                    <span class="checkbox-text">پاک کردن تاریخچه توییت‌ها</span>
                 </label>
             </div>
-        </div>
-        <div class="form-group">
-            <label>
-                <input type="checkbox" name="reset_history"> پاک کردن تاریخچه توییت‌ها
-            </label>
-        </div>
-        <button type="submit" class="btn">شروع مانیتورینگ</button>
-    </form>
+            <button type="submit" class="btn">شروع مانیتورینگ</button>
+        </form>
+    </div>
 
-    <div class="user-list">
+    <div class="container">
         <h2>مانیتورهای فعال</h2>
+
         {% if active_usernames %}
-            {% for user_monitor in active_usernames %}
-                <div class="user-item">
-                    {% if user_monitor is string %}
-                        <span>@{{ user_monitor }}</span>
-                        <div class="action-links">
-                            <a href="/tweets/{{ user_monitor }}">مشاهده توییت‌ها</a> | 
-                            <a href="/stop_monitoring/{{ user_monitor }}">توقف مانیتورینگ</a>
-                        </div>
-                    {% else %}
-                        <span>
-                            @{{ user_monitor.username }}
-                            <span class="monitor-type">
-                                {% if user_monitor.monitor_type == 'tweets_only' %}
-                                    (فقط توییت‌های اصلی)
-                                {% elif user_monitor.monitor_type == 'tweets_replies' %}
-                                    (توییت‌ها و ریپلای‌ها)
-                                {% elif user_monitor.monitor_type == 'all_activity' %}
-                                    (همه فعالیت‌ها)
-                                {% endif %}
-                            </span>
-                        </span>
-                        <div class="action-links">
-                            <a href="/tweets/{{ user_monitor.username }}">مشاهده توییت‌ها</a> | 
-                            <a href="/stop_monitoring/{{ user_monitor.username }}">توقف مانیتورینگ</a>
-                        </div>
-                    {% endif %}
-                </div>
-            {% endfor %}
+            <div class="user-list">
+                {% for user_monitor in active_usernames %}
+                    <div class="user-item">
+                        {% if user_monitor is string %}
+                            <div class="user-info">
+                                <span class="username">@{{ user_monitor }}</span>
+                            </div>
+                            <div class="action-links">
+                                <a href="/tweets/{{ user_monitor }}" class="action-btn view-btn">مشاهده توییت‌ها</a>
+                                <a href="/stop_monitoring/{{ user_monitor }}" class="action-btn stop-btn">توقف مانیتورینگ</a>
+                            </div>
+                        {% else %}
+                            <div class="user-info">
+                                <span class="username">@{{ user_monitor.username }}</span>
+                                <span class="monitor-type">
+                                    {% if user_monitor.monitor_type == 'tweets_only' %}
+                                        فقط توییت‌های اصلی
+                                    {% elif user_monitor.monitor_type == 'tweets_replies' %}
+                                        توییت‌ها و ریپلای‌ها
+                                    {% elif user_monitor.monitor_type == 'all_activity' %}
+                                        همه فعالیت‌ها
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="action-links">
+                                <a href="/tweets/{{ user_monitor.username }}" class="action-btn view-btn">مشاهده توییت‌ها</a>
+                                <a href="/stop_monitoring/{{ user_monitor.username }}" class="action-btn stop-btn">توقف مانیتورینگ</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
         {% else %}
-            <p>هیچ مانیتور فعالی وجود ندارد</p>
+            <div class="empty-state">
+                <p>هیچ مانیتور فعالی وجود ندارد</p>
+                <p>برای شروع مانیتورینگ، نام کاربری توییتر را در فرم بالا وارد کنید</p>
+            </div>
         {% endif %}
     </div>
 
-    <div class="status">
-        <p>وضعیت: {{ 'فعال' if is_monitoring_active else 'غیرفعال' }}</p>
-        <p>در حال مانیتورینگ {{ active_usernames|length }} حساب</p>
+    <div class="status-container">
+        <div class="status-item">
+            <span class="status-label">وضعیت:</span>
+            <span class="status-value {% if is_monitoring_active %}active{% else %}inactive{% endif %}">
+                {{ 'فعال' if is_monitoring_active else 'غیرفعال' }}
+            </span>
+        </div>
+        <div class="status-item">
+            <span class="status-label">تعداد حساب‌های تحت نظر:</span>
+            <span class="status-value">{{ active_usernames|length }}</span>
+        </div>
     </div>
 </body>
 </html>
-        
+    

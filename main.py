@@ -1853,14 +1853,22 @@ def create_templates():
     # اجرای برنامه
     if __name__ == "__main__":
         try:
+            print("Creating templates...")
             # ایجاد فایل‌های قالب
             create_templates()
+            print("Templates created successfully!")
 
             # راه‌اندازی سرور Flask با socketio
             print("Starting Twitter Monitor Web Interface...")
             print("Open your browser and navigate to http://0.0.0.0:8080")
+            app.debug = True
             socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True, log_output=True)
         except Exception as e:
-            print(f"Error starting server: {str(e)}")
+            print("\nError occurred:")
+            print("-" * 50)
+            print(f"Error type: {type(e).__name__}")
+            print(f"Error message: {str(e)}")
+            print("-" * 50)
             import traceback
             traceback.print_exc()
+            print("\nPlease check if all required packages are installed.")

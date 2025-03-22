@@ -1,17 +1,25 @@
 # main code for analitc x
-import os
-import json
-import time
-import threading
-import random
-import queue
-import sqlite3
-import logging
-from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from flask_socketio import SocketIO, emit
-import requests
-from bs4 import BeautifulSoup
+try:
+    import os
+    import json
+    import time
+    import threading
+    import random
+    import queue
+    import sqlite3
+    import logging
+    from datetime import datetime
+    
+    print("Importing Flask modules...")
+    from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+    from flask_socketio import SocketIO, emit
+    print("Flask modules imported successfully!")
+    
+    print("Importing additional modules...")
+    import requests
+    from bs4 import BeautifulSoup
+    import feedparser
+    print("All modules imported successfully!")
 try:
     from lxml import html
     USE_LXML = True

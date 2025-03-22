@@ -1852,10 +1852,15 @@ def create_templates():
 
     # اجرای برنامه
     if __name__ == "__main__":
+    try:
         # ایجاد فایل‌های قالب
         create_templates()
 
         # راه‌اندازی سرور Flask با socketio
         print("Starting Twitter Monitor Web Interface...")
         print("Open your browser and navigate to http://0.0.0.0:8080")
-        socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True)
+        socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True, log_output=True)
+    except Exception as e:
+        print(f"Error starting server: {str(e)}")
+        import traceback
+        traceback.print_exc()

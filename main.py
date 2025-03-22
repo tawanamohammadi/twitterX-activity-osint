@@ -1,4 +1,4 @@
-# main code for analitc x 
+# main code for analitc x
 import os
 import json
 import time

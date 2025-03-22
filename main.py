@@ -1855,7 +1855,7 @@ def create_templates():
         # ایجاد فایل‌های قالب
         create_templates()
 
-        # راه‌اندازی سرور Flask
+        # راه‌اندازی سرور Flask با socketio
         print("Starting Twitter Monitor Web Interface...")
-        print("Open your browser and navigate to http://127.0.0.1:8080")
-        app.run(host='0.0.0.0', port=8080, debug=True)
+        print("Open your browser and navigate to http://0.0.0.0:8080")
+        socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True)

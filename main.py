@@ -1853,22 +1853,47 @@ def create_templates():
     # اجرای برنامه
     if __name__ == "__main__":
         try:
-            print("Creating templates...")
-            # ایجاد فایل‌های قالب
+            # Set up logging
+            import logging
+            logging.basicConfig(level=logging.DEBUG)
+            logger = logging.getLogger(__name__)
+            
+            logger.info("Creating templates...")
             create_templates()
-            print("Templates created successfully!")
+            logger.info("Templates created successfully!")
 
-            # راه‌اندازی سرور Flask با socketio
-            print("Starting Twitter Monitor Web Interface...")
-            print("Open your browser and navigate to http://0.0.0.0:8080")
+            # Initialize database
+            logger.info("Initializing database...")
+            init_database()
+            logger.info("Database initialized successfully!")
+
+            # Start the server
+            logger.info("Starting Twitter Monitor Web Interface...")
+            logger.info("Open your browser and navigate to http://0.0.0.0:8080")
+            
+            # Enable Flask debugging
             app.debug = True
-            socketio.run(app, host='0.0.0.0', port=8080, debug=True, allow_unsafe_werkzeug=True, log_output=True)
+            
+            # Run the server
+            socketio.run(
+                app,
+                host='0.0.0.0',
+                port=8080,
+                debug=True,
+                allow_unsafe_werkzeug=True,
+                log_output=True
+            )
         except Exception as e:
-            print("\nError occurred:")
+            print("\nFatal Error:")
             print("-" * 50)
             print(f"Error type: {type(e).__name__}")
             print(f"Error message: {str(e)}")
             print("-" * 50)
             import traceback
             traceback.print_exc()
-            print("\nPlease check if all required packages are installed.")
+            print("\nDebug information:")
+            print("1. Check if all required packages are installed")
+            print("2. Ensure port 8080 is available")
+            print("3. Verify templates directory exists")
+            print("4. Check write permissions for database and log files")
+            raise

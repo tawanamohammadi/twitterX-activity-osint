@@ -1,778 +1,778 @@
-    # main code for analitc x 
-    import os
-    import json
-    import time
-    import threading
-    import random
-    import queue
-    import sqlite3
-    import logging
-    from datetime import datetime
-    from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-    from flask_socketio import SocketIO, emit
-    import requests
-    from bs4 import BeautifulSoup
-    try:
-        from lxml import html
-        USE_LXML = True
-    except ImportError:
-        USE_LXML = False
-    import feedparser
-    import re
-    from werkzeug.security import generate_password_hash, check_password_hash
-    import secrets
+# main code for analitc x 
+import os
+import json
+import time
+import threading
+import random
+import queue
+import sqlite3
+import logging
+from datetime import datetime
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask_socketio import SocketIO, emit
+import requests
+from bs4 import BeautifulSoup
+try:
+    from lxml import html
+    USE_LXML = True
+except ImportError:
+    USE_LXML = False
+import feedparser
+import re
+from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
 
-    # تنظیم لاگینگ
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler("twitter_monitor.log"),
-            logging.StreamHandler()
-        ]
-    )
-    logger = logging.getLogger("twitter_monitor")
-
-    # تعریف اپلیکیشن Flask
-    app = Flask(__name__)
-    app.secret_key = secrets.token_hex(16)  # کلید رمزنگاری برای جلسه‌ها
-    socketio = SocketIO(app)
-
-    # تنظیمات پایگاه داده
-    DB_PATH = "twitter_monitor.db"
-
-    # لیست سرویس‌های نیتر با اولویت
-    NITTER_INSTANCES = [
-        "https://nitter.net",
-        "https://nitter.42l.fr",
-        "https://nitter.pussthecat.org",
-        "https://nitter.nixnet.services",
-        "https://nitter.fdn.fr",
-        "https://nitter.1d4.us",
-        "https://nitter.kavin.rocks",
-        "https://nitter.unixfox.eu",
-        "https://nitter.domain.glass",
-        "https://nitter.eu",
-        "https://nitter.namazso.eu",
-        "https://nitter.actionsack.com"
+# تنظیم لاگینگ
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("twitter_monitor.log"),
+        logging.StreamHandler()
     ]
+)
+logger = logging.getLogger("twitter_monitor")
 
-    # صف پردازش توییت‌ها
-    tweet_queue = queue.Queue()
+# تعریف اپلیکیشن Flask
+app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)  # کلید رمزنگاری برای جلسه‌ها
+socketio = SocketIO(app)
 
-    # وضعیت سرویس‌های نیتر
-    nitter_status = {instance: {"active": True, "last_check": 0, "failures": 0} for instance in NITTER_INSTANCES}
+# تنظیمات پایگاه داده
+DB_PATH = "twitter_monitor.db"
 
-    # تنظیمات زمانی برای پایش (به ثانیه)
-    MONITOR_INTERVALS = {
-        "high_activity": 30,      # اکانت‌های پرفعالیت
-        "medium_activity": 60,    # اکانت‌های با فعالیت متوسط
-        "low_activity": 180       # اکانت‌های کم‌فعالیت
+# لیست سرویس‌های نیتر با اولویت
+NITTER_INSTANCES = [
+    "https://nitter.net",
+    "https://nitter.42l.fr",
+    "https://nitter.pussthecat.org",
+    "https://nitter.nixnet.services",
+    "https://nitter.fdn.fr",
+    "https://nitter.1d4.us",
+    "https://nitter.kavin.rocks",
+    "https://nitter.unixfox.eu",
+    "https://nitter.domain.glass",
+    "https://nitter.eu",
+    "https://nitter.namazso.eu",
+    "https://nitter.actionsack.com"
+]
+
+# صف پردازش توییت‌ها
+tweet_queue = queue.Queue()
+
+# وضعیت سرویس‌های نیتر
+nitter_status = {instance: {"active": True, "last_check": 0, "failures": 0} for instance in NITTER_INSTANCES}
+
+# تنظیمات زمانی برای پایش (به ثانیه)
+MONITOR_INTERVALS = {
+    "high_activity": 30,      # اکانت‌های پرفعالیت
+    "medium_activity": 60,    # اکانت‌های با فعالیت متوسط
+    "low_activity": 180       # اکانت‌های کم‌فعالیت
+}
+
+# متغیرهای گلوبال برای کنترل وضعیت
+monitoring_threads = {}
+active_usernames = {}  # تغییر به دیکشنری: {user_id: [twitter_usernames]}
+is_monitoring_active = False
+stop_event = threading.Event()
+
+# ایجاد پایگاه داده
+def init_database():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    # جدول کاربران
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+    )
+    ''')
+
+    # جدول توییت‌ها
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS tweets (
+        id INTEGER PRIMARY KEY,
+        user_id INTEGER,
+        twitter_username TEXT,
+        tweet_id TEXT,
+        title TEXT,
+        link TEXT,
+        published TEXT,
+        type TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, twitter_username, tweet_id)
+    )
+    ''')
+
+    # جدول مانیتورها
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS monitors (
+        id INTEGER PRIMARY KEY,
+        user_id INTEGER,
+        twitter_username TEXT,
+        monitor_type TEXT,
+        last_tweet_id TEXT,
+        activity_level TEXT DEFAULT 'medium_activity',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, twitter_username)
+    )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+# فراخوانی تابع ایجاد پایگاه داده
+init_database()
+
+# مدیریت کاربران
+def load_users():
+    if os.path.exists('users.json'):
+        try:
+            with open('users.json', 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_users(users):
+    with open('users.json', 'w', encoding='utf-8') as f:
+        json.dump(users, f, ensure_ascii=False, indent=2)
+ # save twitte
+def save_tweet_data(user_id, query, feed_base_url, entry):
+    """Save complete tweet data to a file"""
+    filename = f"tweets_{user_id}_{query}.json"
+    data = []
+
+    # Load existing data if file exists
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except:
+            data = []
+
+    # Create tweet data object with all available information
+    tweet_data = {
+        "query": query,
+        "source": feed_base_url,
+        "id": entry.id,
+        "title": entry.get('title', ''),
+        "content": entry.get('summary', ''),
+        "published": entry.get('published', ''),
+        "link": entry.get('link', ''),
+        "author": entry.get('author', ''),
+        "saved_at": datetime.datetime.now().isoformat()
     }
 
-    # متغیرهای گلوبال برای کنترل وضعیت
-    monitoring_threads = {}
-    active_usernames = {}  # تغییر به دیکشنری: {user_id: [twitter_usernames]}
-    is_monitoring_active = False
-    stop_event = threading.Event()
+    # Check if this tweet is already saved (avoid duplicates)
+    # بررسی دقیق‌تر برای جلوگیری از ذخیره توییت‌های تکراری
+    for existing_tweet in data:
+        # بررسی ID
+        if existing_tweet.get('id') == tweet_data['id']:
+            return tweet_data
 
-    # ایجاد پایگاه داده
-    def init_database():
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
+        # بررسی محتوا و لینک
+        if (existing_tweet.get('title') == tweet_data['title'] and 
+            existing_tweet.get('link') == tweet_data['link']):
+            return tweet_data
 
-        # جدول کاربران
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-        ''')
+        # بررسی محتوا و تاریخ انتشار
+        if (existing_tweet.get('title') == tweet_data['title'] and 
+            existing_tweet.get('published') == tweet_data['published']):
+            return tweet_data
 
-        # جدول توییت‌ها
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS tweets (
-            id INTEGER PRIMARY KEY,
-            user_id INTEGER,
-            twitter_username TEXT,
-            tweet_id TEXT,
-            title TEXT,
-            link TEXT,
-            published TEXT,
-            type TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, twitter_username, tweet_id)
-        )
-        ''')
+    # Add new tweet to data
+    data.append(tweet_data)
 
-        # جدول مانیتورها
-        cursor.execute('''
-        CREATE TABLE IF NOT EXISTS monitors (
-            id INTEGER PRIMARY KEY,
-            user_id INTEGER,
-            twitter_username TEXT,
-            monitor_type TEXT,
-            last_tweet_id TEXT,
-            activity_level TEXT DEFAULT 'medium_activity',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, twitter_username)
-        )
-        ''')
+    # Save updated data
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-        conn.commit()
-        conn.close()
+    return tweet_data
 
-    # فراخوانی تابع ایجاد پایگاه داده
-    init_database()
+def save_last_id(user_id, query, feed_base_url, last_id):
+    """Save the last tweet ID to a file"""
+    data = {}
+    filename = f"last_tweet_ids_{user_id}.json"
 
-    # مدیریت کاربران
-    def load_users():
-        if os.path.exists('users.json'):
-            try:
-                with open('users.json', 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except:
-                return {}
-        return {}
-
-    def save_users(users):
-        with open('users.json', 'w', encoding='utf-8') as f:
-            json.dump(users, f, ensure_ascii=False, indent=2)
-     # save twitte
-    def save_tweet_data(user_id, query, feed_base_url, entry):
-        """Save complete tweet data to a file"""
-        filename = f"tweets_{user_id}_{query}.json"
-        data = []
-
-        # Load existing data if file exists
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-            except:
-                data = []
-
-        # Create tweet data object with all available information
-        tweet_data = {
-            "query": query,
-            "source": feed_base_url,
-            "id": entry.id,
-            "title": entry.get('title', ''),
-            "content": entry.get('summary', ''),
-            "published": entry.get('published', ''),
-            "link": entry.get('link', ''),
-            "author": entry.get('author', ''),
-            "saved_at": datetime.datetime.now().isoformat()
-        }
-
-        # Check if this tweet is already saved (avoid duplicates)
-        # بررسی دقیق‌تر برای جلوگیری از ذخیره توییت‌های تکراری
-        for existing_tweet in data:
-            # بررسی ID
-            if existing_tweet.get('id') == tweet_data['id']:
-                return tweet_data
-
-            # بررسی محتوا و لینک
-            if (existing_tweet.get('title') == tweet_data['title'] and 
-                existing_tweet.get('link') == tweet_data['link']):
-                return tweet_data
-
-            # بررسی محتوا و تاریخ انتشار
-            if (existing_tweet.get('title') == tweet_data['title'] and 
-                existing_tweet.get('published') == tweet_data['published']):
-                return tweet_data
-
-        # Add new tweet to data
-        data.append(tweet_data)
-
-        # Save updated data
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-
-        return tweet_data
-
-    def save_last_id(user_id, query, feed_base_url, last_id):
-        """Save the last tweet ID to a file"""
-        data = {}
-        filename = f"last_tweet_ids_{user_id}.json"
-
-        # Load existing data if file exists
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-            except:
-                data = {}
-
-        # Create a unique key for each query+source combination
-        key = f"{query}_{feed_base_url}"
-
-        # Update with new last ID
-        data[key] = last_id
-
-        # Save to file
-        with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-
-    def load_last_id(user_id, query, feed_base_url):
-        """Load the last tweet ID from file"""
-        filename = f"last_tweet_ids_{user_id}.json"
-
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    key = f"{query}_{feed_base_url}"
-                    return data.get(key)
-            except:
-                return None
-
-        return None
-
-    def load_last_id(user_id, query, feed_base_url):
-        """Load the last tweet ID from file"""
-        filename = f"last_tweet_ids_{user_id}.json"
-
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                    key = f"{query}_{feed_base_url}"
-                    return data.get(key)
-            except:
-                return None
-
-        return None
-
-    def is_original_tweet(entry, username, monitor_type='tweets_only'):
-        """Check if this tweet should be included based on monitor type"""
-        # Get the title of the tweet
-        title = entry.get('title', '')
-        author = entry.get('author', '')
-
-        # Check if the tweet is from the user we're monitoring
-        is_from_user = f"@{username}" in author
-
-        if monitor_type == 'tweets_only':
-            # Only include original tweets from the user (no retweets, no replies)
-            if title.startswith('RT @') or title.startswith('@'):
-                return False
-            return is_from_user
-
-        elif monitor_type == 'tweets_replies':
-            # Include original tweets and replies from the user (no retweets)
-            if title.startswith('RT @'):
-                return False
-            return is_from_user
-
-        elif monitor_type == 'all_activity':
-            # Include all activity: original tweets, replies, and mentions
-            if title.startswith('RT @'):
-                return False
-            # For mentions, either the tweet is from the user or mentions the user
-            return is_from_user or f"@{username}" in title
-
-        # Default fallback to original tweets only
-        return is_from_user and not title.startswith('RT @') and not title.startswith('@')
-
-    def parse_tweet_date(date_str):
-        """Parse the tweet date string to a datetime object"""
+    # Load existing data if file exists
+    if os.path.exists(filename):
         try:
-            # Try to parse the date string
-            dt = datetime.datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %z')
-            return dt
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
         except:
-            try:
-                # Try alternative format
-                dt = datetime.datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S GMT')
-                return dt.replace(tzinfo=datetime.timezone.utc)
-            except:
-                print(f"Could not parse date: {date_str}")
-                return None
+            data = {}
 
-    def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_history=False, monitor_type='tweets_only'):
-        """Monitor search results for a specific query"""
-        # URL encode the query to handle special characters
-        encoded_query = query.replace(' ', '%20')
+    # Create a unique key for each query+source combination
+    key = f"{query}_{feed_base_url}"
 
-        # Adjust feed URL parameters based on monitor type
-        feed_params = "f=tweets"
-        if monitor_type == 'tweets_replies':
-            feed_params = "f=tweets,replies"
-        elif monitor_type == 'all_activity':
-            feed_params = "f=tweets,replies,mentions"
+    # Update with new last ID
+    data[key] = last_id
 
-        feed_url = f"{feed_base_url}?{feed_params}&q={encoded_query}"
-        print(f"Starting to monitor search for '{query}' with type '{monitor_type}' from {feed_url}...")
+    # Save to file
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
-        # Record start time to only show tweets after script started
-        start_time = datetime.datetime.now()
-        start_time_utc = start_time.astimezone(datetime.timezone.utc)
-        print(f"[Search: {query}] Monitoring started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+def load_last_id(user_id, query, feed_base_url):
+    """Load the last tweet ID from file"""
+    filename = f"last_tweet_ids_{user_id}.json"
 
-        # Load last tweet ID from file (or reset if requested)
-        last_entry_id = None if reset_history else load_last_id(user_id, query, feed_base_url)
-        if last_entry_id and not reset_history:
-            print(f"[Search: {query}] Resuming from last saved tweet ID: {last_entry_id}")
-        else:
-            print(f"[Search: {query}] Starting fresh monitoring (no history)")
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                key = f"{query}_{feed_base_url}"
+                return data.get(key)
+        except:
+            return None
 
-        while not stop_event.is_set():
-            try:
-                feed = feedparser.parse(feed_url)
-                current_time = datetime.datetime.now().strftime('%H:%M:%S')
-                print(f"[Search: {query}] Checking for new tweets... ({current_time})")
+    return None
 
-                if feed.entries:
-                    if last_entry_id is None:
-                        # Find the first tweet that matches our criteria
+def load_last_id(user_id, query, feed_base_url):
+    """Load the last tweet ID from file"""
+    filename = f"last_tweet_ids_{user_id}.json"
+
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                key = f"{query}_{feed_base_url}"
+                return data.get(key)
+        except:
+            return None
+
+    return None
+
+def is_original_tweet(entry, username, monitor_type='tweets_only'):
+    """Check if this tweet should be included based on monitor type"""
+    # Get the title of the tweet
+    title = entry.get('title', '')
+    author = entry.get('author', '')
+
+    # Check if the tweet is from the user we're monitoring
+    is_from_user = f"@{username}" in author
+
+    if monitor_type == 'tweets_only':
+        # Only include original tweets from the user (no retweets, no replies)
+        if title.startswith('RT @') or title.startswith('@'):
+            return False
+        return is_from_user
+
+    elif monitor_type == 'tweets_replies':
+        # Include original tweets and replies from the user (no retweets)
+        if title.startswith('RT @'):
+            return False
+        return is_from_user
+
+    elif monitor_type == 'all_activity':
+        # Include all activity: original tweets, replies, and mentions
+        if title.startswith('RT @'):
+            return False
+        # For mentions, either the tweet is from the user or mentions the user
+        return is_from_user or f"@{username}" in title
+
+    # Default fallback to original tweets only
+    return is_from_user and not title.startswith('RT @') and not title.startswith('@')
+
+def parse_tweet_date(date_str):
+    """Parse the tweet date string to a datetime object"""
+    try:
+        # Try to parse the date string
+        dt = datetime.datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %z')
+        return dt
+    except:
+        try:
+            # Try alternative format
+            dt = datetime.datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S GMT')
+            return dt.replace(tzinfo=datetime.timezone.utc)
+        except:
+            print(f"Could not parse date: {date_str}")
+            return None
+
+def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_history=False, monitor_type='tweets_only'):
+    """Monitor search results for a specific query"""
+    # URL encode the query to handle special characters
+    encoded_query = query.replace(' ', '%20')
+
+    # Adjust feed URL parameters based on monitor type
+    feed_params = "f=tweets"
+    if monitor_type == 'tweets_replies':
+        feed_params = "f=tweets,replies"
+    elif monitor_type == 'all_activity':
+        feed_params = "f=tweets,replies,mentions"
+
+    feed_url = f"{feed_base_url}?{feed_params}&q={encoded_query}"
+    print(f"Starting to monitor search for '{query}' with type '{monitor_type}' from {feed_url}...")
+
+    # Record start time to only show tweets after script started
+    start_time = datetime.datetime.now()
+    start_time_utc = start_time.astimezone(datetime.timezone.utc)
+    print(f"[Search: {query}] Monitoring started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # Load last tweet ID from file (or reset if requested)
+    last_entry_id = None if reset_history else load_last_id(user_id, query, feed_base_url)
+    if last_entry_id and not reset_history:
+        print(f"[Search: {query}] Resuming from last saved tweet ID: {last_entry_id}")
+    else:
+        print(f"[Search: {query}] Starting fresh monitoring (no history)")
+
+    while not stop_event.is_set():
+        try:
+            feed = feedparser.parse(feed_url)
+            current_time = datetime.datetime.now().strftime('%H:%M:%S')
+            print(f"[Search: {query}] Checking for new tweets... ({current_time})")
+
+            if feed.entries:
+                if last_entry_id is None:
+                    # Find the first tweet that matches our criteria
+                    for entry in feed.entries:
+                        if is_original_tweet(entry, query, monitor_type):
+                            last_entry_id = entry.id
+                            save_last_id(user_id, query, feed_base_url, last_entry_id)
+                            print(f"[Search: {query}] Found first tweet ID: {last_entry_id}")
+                            break
+                else:
+                    new_entries = []
+                    for entry in feed.entries:
+                        # Stop if we reach the last processed tweet
+                        if entry.id == last_entry_id:
+                            break
+
+                        # Only include tweets that match our monitoring criteria
+                        if not is_original_tweet(entry, query, monitor_type):
+                            continue
+
+                        # Try to parse the published date
+                        pub_date = parse_tweet_date(entry.get('published', ''))
+                        if pub_date and pub_date < start_time_utc:
+                            continue
+
+                        new_entries.append(entry)
+
+                    if new_entries:
+                        print(f"\n[Search: {query}] {len(new_entries)} new tweet(s)!")
+                        for entry in new_entries:
+                            print(f"[Search: {query}] {entry.get('published')}: {entry.get('title')}")
+                            print(f"Link: {entry.get('link')}")
+                            print("-" * 50)
+
+                            # Save complete tweet data
+                            tweet_data = save_tweet_data(user_id, query, feed_base_url, entry)
+
+                        # Update the last ID to the most recent tweet
                         for entry in feed.entries:
                             if is_original_tweet(entry, query, monitor_type):
                                 last_entry_id = entry.id
                                 save_last_id(user_id, query, feed_base_url, last_entry_id)
-                                print(f"[Search: {query}] Found first tweet ID: {last_entry_id}")
-                                break
-                    else:
-                        new_entries = []
-                        for entry in feed.entries:
-                            # Stop if we reach the last processed tweet
-                            if entry.id == last_entry_id:
                                 break
 
-                            # Only include tweets that match our monitoring criteria
-                            if not is_original_tweet(entry, query, monitor_type):
-                                continue
+            # Sleep before next check
+            time.sleep(check_interval)
 
-                            # Try to parse the published date
-                            pub_date = parse_tweet_date(entry.get('published', ''))
-                            if pub_date and pub_date < start_time_utc:
-                                continue
+        except Exception as e:
+            print(f"[Search: {query}] Error: {str(e)}")
+            print(f"Retrying in {check_interval} seconds...")
+            time.sleep(check_interval)
 
-                            new_entries.append(entry)
+    print(f"[Search: {query}] Monitoring stopped.")
 
-                        if new_entries:
-                            print(f"\n[Search: {query}] {len(new_entries)} new tweet(s)!")
-                            for entry in new_entries:
-                                print(f"[Search: {query}] {entry.get('published')}: {entry.get('title')}")
-                                print(f"Link: {entry.get('link')}")
-                                print("-" * 50)
+# تابع برای شروع مانیتورینگ یک کاربر
+def start_monitoring_for_user(user_id, username, monitor_type='tweets_only', reset_history=False):
+    global active_usernames, is_monitoring_active
 
-                                # Save complete tweet data
-                                tweet_data = save_tweet_data(user_id, query, feed_base_url, entry)
+    if user_id not in active_usernames:
+        active_usernames[user_id] = []
 
-                            # Update the last ID to the most recent tweet
-                            for entry in feed.entries:
-                                if is_original_tweet(entry, query, monitor_type):
-                                    last_entry_id = entry.id
-                                    save_last_id(user_id, query, feed_base_url, last_entry_id)
-                                    break
+    # Check if already monitoring this username
+    for existing in active_usernames[user_id]:
+        if isinstance(existing, dict) and existing.get('username') == username:
+            # Update monitor type if it changed
+            existing['monitor_type'] = monitor_type
+            return
+        elif existing == username:  # For backward compatibility
+            active_usernames[user_id].remove(existing)
+            break
 
-                # Sleep before next check
-                time.sleep(check_interval)
+    # Add new monitoring with type
+    active_usernames[user_id].append({
+        'username': username,
+        'monitor_type': monitor_type,
+        'started_at': datetime.datetime.now().isoformat()
+    })
 
-            except Exception as e:
-                print(f"[Search: {query}] Error: {str(e)}")
-                print(f"Retrying in {check_interval} seconds...")
-                time.sleep(check_interval)
+    is_monitoring_active = True
 
-        print(f"[Search: {query}] Monitoring stopped.")
+    # Adjust feed URL parameters based on monitor type
+    feed_params = "f=tweets"
+    if monitor_type == 'tweets_replies':
+        feed_params = "f=tweets,replies"
+    elif monitor_type == 'all_activity':
+        feed_params = "f=tweets,replies,mentions"
 
-    # تابع برای شروع مانیتورینگ یک کاربر
-    def start_monitoring_for_user(user_id, username, monitor_type='tweets_only', reset_history=False):
-        global active_usernames, is_monitoring_active
+    # Start monitoring threads
+    threads = []
+    for feed_base_url in ["https://rss.xcancel.com/search/rss", "https://nitter.privacyredirect.com/search/rss"]:
+        thread = threading.Thread(
+            target=monitor_search,
+            args=(user_id, username, feed_base_url, 5, reset_history, monitor_type),
+            daemon=True
+        )
+        threads.append(thread)
+        thread.start()
 
-        if user_id not in active_usernames:
-            active_usernames[user_id] = []
+    monitoring_threads[username] = threads
 
-        # Check if already monitoring this username
-        for existing in active_usernames[user_id]:
-            if isinstance(existing, dict) and existing.get('username') == username:
-                # Update monitor type if it changed
-                existing['monitor_type'] = monitor_type
-                return
-            elif existing == username:  # For backward compatibility
-                active_usernames[user_id].remove(existing)
+# تابع برای توقف مانیتورینگ یک کاربر
+def stop_monitoring_for_user(user_id, username):
+    global active_usernames, is_monitoring_active
+
+    if user_id in active_usernames:
+        # حذف کاربر از لیست مانیتورینگ
+        for i, user_monitor in enumerate(active_usernames[user_id]):
+            if isinstance(user_monitor, dict) and user_monitor.get('username') == username:
+                active_usernames[user_id].pop(i)
+                break
+            elif user_monitor == username:  # برای سازگاری با نسخه‌های قبلی
+                active_usernames[user_id].remove(username)
                 break
 
-        # Add new monitoring with type
-        active_usernames[user_id].append({
-            'username': username,
-            'monitor_type': monitor_type,
-            'started_at': datetime.datetime.now().isoformat()
-        })
+    # بررسی اینکه آیا هنوز کاربری در حال مانیتورینگ است
+    has_active_monitors = False
+    for user_monitors in active_usernames.values():
+        if user_monitors:
+            has_active_monitors = True
+            break
 
-        is_monitoring_active = True
+    if not has_active_monitors:
+        is_monitoring_active = False
 
-        # Adjust feed URL parameters based on monitor type
-        feed_params = "f=tweets"
-        if monitor_type == 'tweets_replies':
-            feed_params = "f=tweets,replies"
-        elif monitor_type == 'all_activity':
-            feed_params = "f=tweets,replies,mentions"
+# تابع برای بارگذاری توییت‌های ذخیره شده
+def load_tweets_for_user(user_id, username):
+    filename = f"tweets_{user_id}_{username}.json"
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except:
+            return []
+    return []
 
-        # Start monitoring threads
-        threads = []
-        for feed_base_url in ["https://rss.xcancel.com/search/rss", "https://nitter.privacyredirect.com/search/rss"]:
-            thread = threading.Thread(
-                target=monitor_search,
-                args=(user_id, username, feed_base_url, 5, reset_history, monitor_type),
-                daemon=True
-            )
-            threads.append(thread)
-            thread.start()
+# تابع برای بررسی اینکه آیا کاربر لاگین است
+def login_required(f):
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
 
-        monitoring_threads[username] = threads
+# مسیرهای Flask
+@app.route('/')
+def home():
+    if 'user_id' in session:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('login'))
 
-    # تابع برای توقف مانیتورینگ یک کاربر
-    def stop_monitoring_for_user(user_id, username):
-        global active_usernames, is_monitoring_active
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-        if user_id in active_usernames:
-            # حذف کاربر از لیست مانیتورینگ
-            for i, user_monitor in enumerate(active_usernames[user_id]):
-                if isinstance(user_monitor, dict) and user_monitor.get('username') == username:
-                    active_usernames[user_id].pop(i)
-                    break
-                elif user_monitor == username:  # برای سازگاری با نسخه‌های قبلی
-                    active_usernames[user_id].remove(username)
-                    break
+        users = load_users()
 
-        # بررسی اینکه آیا هنوز کاربری در حال مانیتورینگ است
-        has_active_monitors = False
-        for user_monitors in active_usernames.values():
-            if user_monitors:
-                has_active_monitors = True
-                break
-
-        if not has_active_monitors:
-            is_monitoring_active = False
-
-    # تابع برای بارگذاری توییت‌های ذخیره شده
-    def load_tweets_for_user(user_id, username):
-        filename = f"tweets_{user_id}_{username}.json"
-        if os.path.exists(filename):
-            try:
-                with open(filename, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except:
-                return []
-        return []
-
-    # تابع برای بررسی اینکه آیا کاربر لاگین است
-    def login_required(f):
-        def decorated_function(*args, **kwargs):
-            if 'user_id' not in session:
-                return redirect(url_for('login'))
-            return f(*args, **kwargs)
-        decorated_function.__name__ = f.__name__
-        return decorated_function
-
-    # مسیرهای Flask
-    @app.route('/')
-    def home():
-        if 'user_id' in session:
-            return redirect(url_for('dashboard'))
-        return redirect(url_for('login'))
-
-    @app.route('/login', methods=['GET', 'POST'])
-    def login():
-        if request.method == 'POST':
-            username = request.form.get('username')
-            password = request.form.get('password')
-
-            users = load_users()
-
-            if username in users and check_password_hash(users[username]['password'], password):
-                session['user_id'] = username
-                return redirect(url_for('dashboard'))
-
-            flash('نام کاربری یا رمز عبور اشتباه است')
-
-        return render_template('login.html')
-
-    @app.route('/register', methods=['GET', 'POST'])
-    def register():
-        if request.method == 'POST':
-            username = request.form.get('username')
-            password = request.form.get('password')
-
-            users = load_users()
-
-            if username in users:
-                flash('این نام کاربری قبلاً استفاده شده است')
-                return render_template('register.html')
-
-            users[username] = {
-                'password': generate_password_hash(password),
-                'created_at': datetime.datetime.now().isoformat()
-            }
-
-            save_users(users)
-
+        if username in users and check_password_hash(users[username]['password'], password):
             session['user_id'] = username
             return redirect(url_for('dashboard'))
 
-        return render_template('register.html')
+        flash('نام کاربری یا رمز عبور اشتباه است')
 
-    @app.route('/logout')
-    def logout():
-        session.pop('user_id', None)
-        return redirect(url_for('login'))
+    return render_template('login.html')
 
-    @app.route('/dashboard')
-    @login_required
-    def dashboard():
-        user_id = session['user_id']
-        user_monitors = active_usernames.get(user_id, [])
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
 
-        return render_template('dashboard.html', 
-                              active_usernames=user_monitors,
-                              is_monitoring_active=is_monitoring_active)
+        users = load_users()
 
-    @app.route('/start_monitoring', methods=['POST'])
-    @login_required
-    def start_monitoring_route():
-        user_id = session['user_id']
-        username = request.form.get('username', '').strip()
-        reset_history = request.form.get('reset_history') == 'on'
-        monitor_type = request.form.get('monitor_type', 'tweets_only')
+        if username in users:
+            flash('این نام کاربری قبلاً استفاده شده است')
+            return render_template('register.html')
 
-        if not username:
-            flash('نام کاربری توییتر الزامی است')
-            return redirect(url_for('dashboard'))
+        users[username] = {
+            'password': generate_password_hash(password),
+            'created_at': datetime.datetime.now().isoformat()
+        }
 
-        # تمیز کردن نام کاربری
-        username = re.sub(r'[^\x00-\x7F]+', '', username)
-        username = re.sub(r'[^a-zA-Z0-9_]', '', username)
+        save_users(users)
 
-        # Check if monitor type is valid
-        if monitor_type not in ['tweets_only', 'tweets_replies', 'all_activity']:
-            monitor_type = 'tweets_only'  # Default to tweets only if invalid
-
-        # Check if already monitoring
-        is_already_monitoring = False
-        if user_id in active_usernames:
-            for existing in active_usernames[user_id]:
-                if isinstance(existing, dict) and existing.get('username') == username:
-                    is_already_monitoring = True
-                    break
-                elif existing == username:  # For backward compatibility
-                    is_already_monitoring = True
-                    break
-
-        if is_already_monitoring:
-            flash(f'حساب @{username} در حال حاضر مانیتور می‌شود')
-            return redirect(url_for('dashboard'))
-
-        # اگر تاریخچه را ریست می‌کنیم، فایل‌های قبلی را حذف کنیم
-        if reset_history:
-            if os.path.exists(f"tweets_{user_id}_{username}.json"):
-                os.remove(f"tweets_{user_id}_{username}.json")
-            # حذف آیدی آخرین توییت برای این کاربر از فایل
-            if os.path.exists(f"last_tweet_ids_{user_id}.json"):
-                try:
-                    with open(f"last_tweet_ids_{user_id}.json", 'r', encoding='utf-8') as f:
-                        data = json.load(f)
-                        for key in list(data.keys()):
-                            if key.startswith(f"{username}_"):
-                                del data[key]
-                    with open(f"last_tweet_ids_{user_id}.json", 'w', encoding='utf-8') as f:
-                        json.dump(data, f, ensure_ascii=False, indent=2)
-                except:
-                    pass
-
-        # شروع مانیتورینگ در یک thread جدید
-        start_monitoring_for_user(user_id, username, monitor_type, reset_history)
-
+        session['user_id'] = username
         return redirect(url_for('dashboard'))
 
-    @app.route('/stop_monitoring/<username>')
-    @login_required
-    def stop_monitoring_route(username):
-        user_id = session['user_id']
+    return render_template('register.html')
 
-        if user_id in active_usernames and username in active_usernames[user_id]:
-            # توقف مانیتورینگ
-            stop_monitoring_for_user(user_id, username)
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    return redirect(url_for('login'))
 
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    user_id = session['user_id']
+    user_monitors = active_usernames.get(user_id, [])
+
+    return render_template('dashboard.html', 
+                          active_usernames=user_monitors,
+                          is_monitoring_active=is_monitoring_active)
+
+@app.route('/start_monitoring', methods=['POST'])
+@login_required
+def start_monitoring_route():
+    user_id = session['user_id']
+    username = request.form.get('username', '').strip()
+    reset_history = request.form.get('reset_history') == 'on'
+    monitor_type = request.form.get('monitor_type', 'tweets_only')
+
+    if not username:
+        flash('نام کاربری توییتر الزامی است')
         return redirect(url_for('dashboard'))
 
-    @app.route('/tweets/<username>')
-    @login_required
-    def view_tweets(username):
-        user_id = session['user_id']
+    # تمیز کردن نام کاربری
+    username = re.sub(r'[^\x00-\x7F]+', '', username)
+    username = re.sub(r'[^a-zA-Z0-9_]', '', username)
 
-        # بررسی اینکه آیا این کاربر اجازه دسترسی به این توییت‌ها را دارد
-        has_access = False
+    # Check if monitor type is valid
+    if monitor_type not in ['tweets_only', 'tweets_replies', 'all_activity']:
+        monitor_type = 'tweets_only'  # Default to tweets only if invalid
 
-        if user_id in active_usernames:
-            for user_monitor in active_usernames[user_id]:
-                if isinstance(user_monitor, dict) and user_monitor.get('username') == username:
-                    has_access = True
-                    break
-                elif user_monitor == username:  # برای سازگاری با نسخه‌های قبلی
-                    has_access = True
-                    break
+    # Check if already monitoring
+    is_already_monitoring = False
+    if user_id in active_usernames:
+        for existing in active_usernames[user_id]:
+            if isinstance(existing, dict) and existing.get('username') == username:
+                is_already_monitoring = True
+                break
+            elif existing == username:  # For backward compatibility
+                is_already_monitoring = True
+                break
 
-        # اگر دسترسی ندارد، بررسی کنیم که آیا فایل توییت‌ها وجود دارد
-        if not has_access and not os.path.exists(f"tweets_{user_id}_{username}.json"):
-            flash(f'شما به توییت‌های @{username} دسترسی ندارید')
-            return redirect(url_for('dashboard'))
+    if is_already_monitoring:
+        flash(f'حساب @{username} در حال حاضر مانیتور می‌شود')
+        return redirect(url_for('dashboard'))
 
-        # نمایش توییت‌های ذخیره شده
-        tweets = load_tweets_for_user(user_id, username)
-        # مرتب‌سازی توییت‌ها بر اساس تاریخ (جدیدترین اول)
-        tweets.sort(key=lambda x: x.get('published', ''), reverse=True)
-        return render_template('tweets.html', username=username, tweets=tweets)
+    # اگر تاریخچه را ریست می‌کنیم، فایل‌های قبلی را حذف کنیم
+    if reset_history:
+        if os.path.exists(f"tweets_{user_id}_{username}.json"):
+            os.remove(f"tweets_{user_id}_{username}.json")
+        # حذف آیدی آخرین توییت برای این کاربر از فایل
+        if os.path.exists(f"last_tweet_ids_{user_id}.json"):
+            try:
+                with open(f"last_tweet_ids_{user_id}.json", 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for key in list(data.keys()):
+                        if key.startswith(f"{username}_"):
+                            del data[key]
+                with open(f"last_tweet_ids_{user_id}.json", 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+            except:
+                pass
 
-    @app.route('/api/status')
-    @login_required
-    def get_status():
-        user_id = session['user_id']
-        user_monitors = active_usernames.get(user_id, [])
+    # شروع مانیتورینگ در یک thread جدید
+    start_monitoring_for_user(user_id, username, monitor_type, reset_history)
 
-        # API برای دریافت وضعیت فعلی
-        return jsonify({
-            "active_usernames": user_monitors,
-            "is_monitoring_active": is_monitoring_active
-        })
+    return redirect(url_for('dashboard'))
 
-    # ایجاد فایل‌های HTML مورد نیاز
-    def create_templates():
-        os.makedirs('templates', exist_ok=True)
+@app.route('/stop_monitoring/<username>')
+@login_required
+def stop_monitoring_route(username):
+    user_id = session['user_id']
 
-        # استایل‌های پایه مشترک برای همه صفحات
-        base_styles = """
-            :root {
-                --primary: #1DA1F2;
-                --primary-dark: #1a91da;
-                --bg: #ffffff;
-                --text: #14171A;
-                --text-secondary: #657786;
-                --border: #E1E8ED;
-                --danger: #E0245E;
-                --success: #17BF63;
-            }
+    if user_id in active_usernames and username in active_usernames[user_id]:
+        # توقف مانیتورینگ
+        stop_monitoring_for_user(user_id, username)
 
-            * {
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }
+    return redirect(url_for('dashboard'))
 
-            body {
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background-color: #f7f9fa;
-                color: var(--text);
-                line-height: 1.6;
-                max-width: 1000px;
-                margin: 0 auto;
-                padding: 20px;
-                direction: rtl;
-            }
+@app.route('/tweets/<username>')
+@login_required
+def view_tweets(username):
+    user_id = session['user_id']
 
-            h1, h2, h3 {
-                color: var(--primary);
-                margin-bottom: 1rem;
-            }
+    # بررسی اینکه آیا این کاربر اجازه دسترسی به این توییت‌ها را دارد
+    has_access = False
 
-            a {
-                color: var(--primary);
-                text-decoration: none;
-                transition: color 0.2s;
-            }
+    if user_id in active_usernames:
+        for user_monitor in active_usernames[user_id]:
+            if isinstance(user_monitor, dict) and user_monitor.get('username') == username:
+                has_access = True
+                break
+            elif user_monitor == username:  # برای سازگاری با نسخه‌های قبلی
+                has_access = True
+                break
 
-            a:hover {
-                color: var(--primary-dark);
-            }
+    # اگر دسترسی ندارد، بررسی کنیم که آیا فایل توییت‌ها وجود دارد
+    if not has_access and not os.path.exists(f"tweets_{user_id}_{username}.json"):
+        flash(f'شما به توییت‌های @{username} دسترسی ندارید')
+        return redirect(url_for('dashboard'))
 
-            .container {
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-                padding: 2rem;
-                margin-bottom: 2rem;
-            }
+    # نمایش توییت‌های ذخیره شده
+    tweets = load_tweets_for_user(user_id, username)
+    # مرتب‌سازی توییت‌ها بر اساس تاریخ (جدیدترین اول)
+    tweets.sort(key=lambda x: x.get('published', ''), reverse=True)
+    return render_template('tweets.html', username=username, tweets=tweets)
 
-            .form-group {
-                margin-bottom: 1.5rem;
-            }
+@app.route('/api/status')
+@login_required
+def get_status():
+    user_id = session['user_id']
+    user_monitors = active_usernames.get(user_id, [])
 
-            label {
-                display: block;
-                margin-bottom: 0.5rem;
-                font-weight: 500;
-                color: var(--text);
-            }
+    # API برای دریافت وضعیت فعلی
+    return jsonify({
+        "active_usernames": user_monitors,
+        "is_monitoring_active": is_monitoring_active
+    })
 
-            input[type="text"],
-            input[type="password"] {
-                width: 100%;
-                padding: 0.75rem 1rem;
-                border: 1px solid var(--border);
-                border-radius: 4px;
-                font-size: 1rem;
-                transition: border 0.2s;
-            }
+# ایجاد فایل‌های HTML مورد نیاز
+def create_templates():
+    os.makedirs('templates', exist_ok=True)
 
-            input[type="text"]:focus,
-            input[type="password"]:focus {
-                border-color: var(--primary);
-                outline: none;
-                box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
-            }
+    # استایل‌های پایه مشترک برای همه صفحات
+    base_styles = """
+        :root {
+            --primary: #1DA1F2;
+            --primary-dark: #1a91da;
+            --bg: #ffffff;
+            --text: #14171A;
+            --text-secondary: #657786;
+            --border: #E1E8ED;
+            --danger: #E0245E;
+            --success: #17BF63;
+        }
 
-            .btn {
-                background: var(--primary);
-                color: white;
-                border: none;
-                padding: 0.75rem 1.5rem;
-                border-radius: 50px;
-                font-size: 1rem;
-                font-weight: 600;
-                cursor: pointer;
-                transition: background 0.2s;
-            }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-            .btn:hover {
-                background: var(--primary-dark);
-            }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f7f9fa;
+            color: var(--text);
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            direction: rtl;
+        }
 
-            .flash-message {
-                padding: 1rem;
-                border-radius: 4px;
-                margin-bottom: 1.5rem;
-                background-color: #d4edda;
-                color: #155724;
-                border: 1px solid #c3e6cb;
-            }
+        h1, h2, h3 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
 
-            .flash-message.error {
-                background-color: #f8d7da;
-                color: #721c24;
-                border: 1px solid #f5c6cb;
-            }
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
 
-            .header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 2rem;
-            }
+        a:hover {
+            color: var(--primary-dark);
+        }
 
-            .logout-link {
-                padding: 0.5rem 1rem;
-                background: rgba(29,161,242,0.1);
-                border-radius: 50px;
-                color: var(--primary);
-                font-weight: 500;
-            }
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
 
-            .logout-link:hover {
-                background: rgba(29,161,242,0.2);
-            }
-        """
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+            transition: border 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(29,161,242,0.2);
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+        }
+
+        .flash-message {
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .logout-link {
+            padding: 0.5rem 1rem;
+            background: rgba(29,161,242,0.1);
+            border-radius: 50px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .logout-link:hover {
+            background: rgba(29,161,242,0.2);
+        }
+    """
 
 
     # قالب صفحه ورود
@@ -1321,7 +1321,7 @@
     </html>
         """)
 
-        # ایجاد قالب نمایش توییت‌ها
+    # ایجاد قالب نمایش توییت‌ها
     # ایجاد قالب نمایش توییت‌ها
     with open('templates/tweets.html', 'w', encoding='utf-8') as f:
         f.write("""

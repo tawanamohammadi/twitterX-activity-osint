@@ -39,6 +39,13 @@ def save_tweet_data(user_id, query, feed_base_url, entry):
     filename = f"tweets_{user_id}_{query}.json"
     data = []
 
+    # Extract media URLs from content
+    media_urls = []
+    if 'content' in entry:
+        # Look for image links in the content
+        img_pattern = r'https?://[^\s<>"]+?\.(?:jpg|jpeg|gif|png)'
+        media_urls = re.findall(img_pattern, entry.content[0].value)
+
     # Load existing data if file exists
     if os.path.exists(filename):
         try:
@@ -57,6 +64,7 @@ def save_tweet_data(user_id, query, feed_base_url, entry):
         "published": entry.get('published', ''),
         "link": entry.get('link', ''),
         "author": entry.get('author', ''),
+        "media": media_urls,
         "saved_at": datetime.datetime.now().isoformat()
     }
 

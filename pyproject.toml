@@ -14,6 +14,7 @@ flask-socketio = "^5.5.1"
 requests = "^2.32.3"
 lxml = "^5.3.1"
 eventlet = "^0.39.1"
+playwright = "^1.42.0"  # اضافه شده برای اسکرپینگ
 
 [tool.poetry.dev-dependencies]
 

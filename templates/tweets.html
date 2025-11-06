@@ -362,26 +362,6 @@
         .hidden {
             display: none;
         }
-
-        .tweet-media {
-            margin: 1rem 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .tweet-image {
-            width: 100%;
-            border-radius: 8px;
-            object-fit: cover;
-            max-height: 300px;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .tweet-image:hover {
-            transform: scale(1.02);
-        }
     </style>
 </head>
 <body>
@@ -475,14 +455,6 @@
                         </div>
                     {% else %}
                         {{ tweet.title|replace('@', '<span class="mention">@</span>')|replace('#', '<span class="hashtag">#</span>')|safe }}
-                    {% endif %}
-
-                    {% if tweet.media %}
-                    <div class="tweet-media">
-                        {% for media_url in tweet.media %}
-                            <img src="{{ media_url }}" alt="تصویر توییت" class="tweet-image">
-                        {% endfor %}
-                    </div>
                     {% endif %}
                 </div>
 

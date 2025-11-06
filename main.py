@@ -1,4 +1,4 @@
-# main code for analitc x 
+# main code for analitc x
 import feedparser
 import time
 import datetime
@@ -20,6 +20,7 @@ active_usernames = {}  # تغییر به دیکشنری: {user_id: [twitter_user
 is_monitoring_active = False
 stop_event = threading.Event()
 
+
 # مدیریت کاربران
 def load_users():
     if os.path.exists('users.json'):
@@ -30,21 +31,17 @@ def load_users():
             return {}
     return {}
 
+
 def save_users(users):
     with open('users.json', 'w', encoding='utf-8') as f:
         json.dump(users, f, ensure_ascii=False, indent=2)
- # save twitte
+
+
+# save twitte
 def save_tweet_data(user_id, query, feed_base_url, entry):
     """Save complete tweet data to a file"""
     filename = f"tweets_{user_id}_{query}.json"
     data = []
-
-    # Extract media URLs from content
-    media_urls = []
-    if 'content' in entry:
-        # Look for image links in the content
-        img_pattern = r'https?://[^\s<>"]+?\.(?:jpg|jpeg|gif|png)'
-        media_urls = re.findall(img_pattern, entry.content[0].value)
 
     # Load existing data if file exists
     if os.path.exists(filename):
@@ -64,7 +61,6 @@ def save_tweet_data(user_id, query, feed_base_url, entry):
         "published": entry.get('published', ''),
         "link": entry.get('link', ''),
         "author": entry.get('author', ''),
-        "media": media_urls,
         "saved_at": datetime.datetime.now().isoformat()
     }
 
@@ -76,13 +72,13 @@ def save_tweet_data(user_id, query, feed_base_url, entry):
             return tweet_data
 
         # بررسی محتوا و لینک
-        if (existing_tweet.get('title') == tweet_data['title'] and 
-            existing_tweet.get('link') == tweet_data['link']):
+        if (existing_tweet.get('title') == tweet_data['title']
+                and existing_tweet.get('link') == tweet_data['link']):
             return tweet_data
 
         # بررسی محتوا و تاریخ انتشار
-        if (existing_tweet.get('title') == tweet_data['title'] and 
-            existing_tweet.get('published') == tweet_data['published']):
+        if (existing_tweet.get('title') == tweet_data['title'] and
+                existing_tweet.get('published') == tweet_data['published']):
             return tweet_data
 
     # Add new tweet to data
@@ -93,6 +89,7 @@ def save_tweet_data(user_id, query, feed_base_url, entry):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     return tweet_data
+
 
 def save_last_id(user_id, query, feed_base_url, last_id):
     """Save the last tweet ID to a file"""
@@ -117,20 +114,6 @@ def save_last_id(user_id, query, feed_base_url, last_id):
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-def load_last_id(user_id, query, feed_base_url):
-    """Load the last tweet ID from file"""
-    filename = f"last_tweet_ids_{user_id}.json"
-
-    if os.path.exists(filename):
-        try:
-            with open(filename, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                key = f"{query}_{feed_base_url}"
-                return data.get(key)
-        except:
-            return None
-
-    return None
 
 def load_last_id(user_id, query, feed_base_url):
     """Load the last tweet ID from file"""
@@ -146,6 +129,23 @@ def load_last_id(user_id, query, feed_base_url):
             return None
 
     return None
+
+
+def load_last_id(user_id, query, feed_base_url):
+    """Load the last tweet ID from file"""
+    filename = f"last_tweet_ids_{user_id}.json"
+
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                key = f"{query}_{feed_base_url}"
+                return data.get(key)
+        except:
+            return None
+
+    return None
+
 
 def is_original_tweet(entry, username, monitor_type='tweets_only'):
     """Check if this tweet should be included based on monitor type"""
@@ -176,7 +176,9 @@ def is_original_tweet(entry, username, monitor_type='tweets_only'):
         return is_from_user or f"@{username}" in title
 
     # Default fallback to original tweets only
-    return is_from_user and not title.startswith('RT @') and not title.startswith('@')
+    return is_from_user and not title.startswith(
+        'RT @') and not title.startswith('@')
+
 
 def parse_tweet_date(date_str):
     """Parse the tweet date string to a datetime object"""
@@ -187,38 +189,57 @@ def parse_tweet_date(date_str):
     except:
         try:
             # Try alternative format
-            dt = datetime.datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S GMT')
+            dt = datetime.datetime.strptime(date_str,
+                                            '%a, %d %b %Y %H:%M:%S GMT')
             return dt.replace(tzinfo=datetime.timezone.utc)
         except:
             print(f"Could not parse date: {date_str}")
             return None
 
-def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_history=False, monitor_type='tweets_only', max_retries=3):
-    cache = {}
-    retry_count = 0
+
+def monitor_search(user_id,
+                   query,
+                   feed_base_url,
+                   check_interval=5,
+                   reset_history=False,
+                   monitor_type='tweets_only'):
     """Monitor search results for a specific query"""
     # URL encode the query to handle special characters
     encoded_query = query.replace(' ', '%20')
 
-    # Adjust feed URL parameters based on monitor type
-    feed_params = "f=tweets"
-    if monitor_type == 'tweets_replies':
-        feed_params = "f=tweets,replies"
-    elif monitor_type == 'all_activity':
-        feed_params = "f=tweets,replies,mentions"
+    # ساخت آدرس RSS مستقیم کاربر به جای استفاده از جستجو
+    if "nitter.privacyredirect.com" in feed_base_url:
+        # برای nitter از آدرس مستقیم RSS کاربر استفاده می‌کنیم
+        base_url_parts = feed_base_url.split('/search')
+        feed_url = f"{base_url_parts[0]}/{encoded_query}/rss"
+    else:
+        # برای سایر سرویس‌ها از روش قبلی استفاده می‌کنیم
+        # Adjust feed URL parameters based on monitor type
+        feed_params = "f=tweets"
+        if monitor_type == 'tweets_replies':
+            feed_params = "f=tweets,replies"
+        elif monitor_type == 'all_activity':
+            feed_params = "f=tweets,replies,mentions"
+        feed_url = f"{feed_base_url}?{feed_params}&q={encoded_query}"
 
-    feed_url = f"{feed_base_url}?{feed_params}&q={encoded_query}"
-    print(f"Starting to monitor search for '{query}' with type '{monitor_type}' from {feed_url}...")
+    print(
+        f"Starting to monitor search for '{query}' with type '{monitor_type}' from {feed_url}..."
+    )
 
     # Record start time to only show tweets after script started
     start_time = datetime.datetime.now()
     start_time_utc = start_time.astimezone(datetime.timezone.utc)
-    print(f"[Search: {query}] Monitoring started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(
+        f"[Search: {query}] Monitoring started at {start_time.strftime('%Y-%m-%d %H:%M:%S')}"
+    )
 
     # Load last tweet ID from file (or reset if requested)
-    last_entry_id = None if reset_history else load_last_id(user_id, query, feed_base_url)
+    last_entry_id = None if reset_history else load_last_id(
+        user_id, query, feed_base_url)
     if last_entry_id and not reset_history:
-        print(f"[Search: {query}] Resuming from last saved tweet ID: {last_entry_id}")
+        print(
+            f"[Search: {query}] Resuming from last saved tweet ID: {last_entry_id}"
+        )
     else:
         print(f"[Search: {query}] Starting fresh monitoring (no history)")
 
@@ -226,26 +247,21 @@ def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_histor
         try:
             feed = feedparser.parse(feed_url)
             current_time = datetime.datetime.now().strftime('%H:%M:%S')
-            print(f"[Search: {query}] Checking for new tweets... ({current_time})")
+            print(
+                f"[Search: {query}] Checking for new tweets... ({current_time})"
+            )
 
             if feed.entries:
-                # کش کردن نتایج برای پردازش سریع‌تر
-                current_entries = {entry.id: entry for entry in feed.entries}
-                
-                # حذف توییت‌های تکراری از کش
-                new_entries = {id: entry for id, entry in current_entries.items() 
-                             if id not in cache}
-                
-                # بروزرسانی کش
-                cache.update(new_entries)
-                
                 if last_entry_id is None:
                     # Find the first tweet that matches our criteria
                     for entry in feed.entries:
                         if is_original_tweet(entry, query, monitor_type):
                             last_entry_id = entry.id
-                            save_last_id(user_id, query, feed_base_url, last_entry_id)
-                            print(f"[Search: {query}] Found first tweet ID: {last_entry_id}")
+                            save_last_id(user_id, query, feed_base_url,
+                                         last_entry_id)
+                            print(
+                                f"[Search: {query}] Found first tweet ID: {last_entry_id}"
+                            )
                             break
                 else:
                     new_entries = []
@@ -266,49 +282,44 @@ def monitor_search(user_id, query, feed_base_url, check_interval=5, reset_histor
                         new_entries.append(entry)
 
                     if new_entries:
-                        print(f"\n[Search: {query}] {len(new_entries)} new tweet(s)!")
+                        print(
+                            f"\n[Search: {query}] {len(new_entries)} new tweet(s)!"
+                        )
                         for entry in new_entries:
-                            print(f"[Search: {query}] {entry.get('published')}: {entry.get('title')}")
+                            print(
+                                f"[Search: {query}] {entry.get('published')}: {entry.get('title')}"
+                            )
                             print(f"Link: {entry.get('link')}")
                             print("-" * 50)
 
                             # Save complete tweet data
-                            tweet_data = save_tweet_data(user_id, query, feed_base_url, entry)
+                            tweet_data = save_tweet_data(
+                                user_id, query, feed_base_url, entry)
 
                         # Update the last ID to the most recent tweet
                         for entry in feed.entries:
                             if is_original_tweet(entry, query, monitor_type):
                                 last_entry_id = entry.id
-                                save_last_id(user_id, query, feed_base_url, last_entry_id)
+                                save_last_id(user_id, query, feed_base_url,
+                                             last_entry_id)
                                 break
 
             # Sleep before next check
             time.sleep(check_interval)
 
         except Exception as e:
-            retry_count += 1
-            error_msg = f"[Search: {query}] Error: {str(e)}"
-            print(error_msg)
-            
-            if retry_count >= max_retries:
-                print(f"[Search: {query}] Max retries ({max_retries}) reached. Waiting longer...")
-                time.sleep(check_interval * 2)
-                retry_count = 0
-            else:
-                print(f"[Search: {query}] Retry {retry_count}/{max_retries} in {check_interval} seconds...")
-                time.sleep(check_interval)
-            
-            # لاگ کردن خطا
-            logging.error(error_msg)
-            continue
+            print(f"[Search: {query}] Error: {str(e)}")
+            print(f"Retrying in {check_interval} seconds...")
+            time.sleep(check_interval)
 
     print(f"[Search: {query}] Monitoring stopped.")
 
-# تابع برای شروع مانیتورینگ یک کاربر
-from concurrent.futures import ThreadPoolExecutor
 
-def start_monitoring_for_user(user_id, username, monitor_type='tweets_only', reset_history=False, max_workers=3):
-    thread_pool = ThreadPoolExecutor(max_workers=max_workers)
+# تابع برای شروع مانیتورینگ یک کاربر
+def start_monitoring_for_user(user_id,
+                              username,
+                              monitor_type='tweets_only',
+                              reset_history=False):
     global active_usernames, is_monitoring_active
 
     if user_id not in active_usernames:
@@ -326,9 +337,12 @@ def start_monitoring_for_user(user_id, username, monitor_type='tweets_only', res
 
     # Add new monitoring with type
     active_usernames[user_id].append({
-        'username': username,
-        'monitor_type': monitor_type,
-        'started_at': datetime.datetime.now().isoformat()
+        'username':
+        username,
+        'monitor_type':
+        monitor_type,
+        'started_at':
+        datetime.datetime.now().isoformat()
     })
 
     is_monitoring_active = True
@@ -342,16 +356,19 @@ def start_monitoring_for_user(user_id, username, monitor_type='tweets_only', res
 
     # Start monitoring threads
     threads = []
-    for feed_base_url in ["https://rss.xcancel.com/search/rss", "https://nitter.privacyredirect.com/search/rss"]:
-        thread = threading.Thread(
-            target=monitor_search,
-            args=(user_id, username, feed_base_url, 5, reset_history, monitor_type),
-            daemon=True
-        )
+    for feed_base_url in [
+            "https://rss.xcancel.com/search/rss",
+            "https://nitter.privacyredirect.com/search/rss"
+    ]:
+        thread = threading.Thread(target=monitor_search,
+                                  args=(user_id, username, feed_base_url, 5,
+                                        reset_history, monitor_type),
+                                  daemon=True)
         threads.append(thread)
         thread.start()
 
     monitoring_threads[username] = threads
+
 
 # تابع برای توقف مانیتورینگ یک کاربر
 def stop_monitoring_for_user(user_id, username):
@@ -360,7 +377,8 @@ def stop_monitoring_for_user(user_id, username):
     if user_id in active_usernames:
         # حذف کاربر از لیست مانیتورینگ
         for i, user_monitor in enumerate(active_usernames[user_id]):
-            if isinstance(user_monitor, dict) and user_monitor.get('username') == username:
+            if isinstance(user_monitor,
+                          dict) and user_monitor.get('username') == username:
                 active_usernames[user_id].pop(i)
                 break
             elif user_monitor == username:  # برای سازگاری با نسخه‌های قبلی
@@ -377,6 +395,7 @@ def stop_monitoring_for_user(user_id, username):
     if not has_active_monitors:
         is_monitoring_active = False
 
+
 # تابع برای بارگذاری توییت‌های ذخیره شده
 def load_tweets_for_user(user_id, username):
     filename = f"tweets_{user_id}_{username}.json"
@@ -388,14 +407,91 @@ def load_tweets_for_user(user_id, username):
             return []
     return []
 
+
 # تابع برای بررسی اینکه آیا کاربر لاگین است
 def login_required(f):
+
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login'))
         return f(*args, **kwargs)
+
     decorated_function.__name__ = f.__name__
     return decorated_function
+
+
+def scrape_nitter_tweets(username):
+    """اسکرپ توییت‌ها از نیتر با استفاده از requests و BeautifulSoup"""
+    import requests
+    from bs4 import BeautifulSoup
+    import re
+    from datetime import datetime
+
+    # آدرس نیتر
+    url = f"https://nitter.privacyredirect.com/{username}"
+
+    try:
+        headers = {
+            'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+
+        if response.status_code != 200:
+            print(f"خطا در دریافت صفحه: {response.status_code}")
+            return []
+
+        soup = BeautifulSoup(response.text, 'lxml')
+        tweets_data = []
+
+        # پیدا کردن توییت‌ها
+        timeline = soup.select('.timeline-item')
+
+        for tweet in timeline:
+            try:
+                # استخراج اطلاعات توییت
+                tweet_id = tweet.get('id', '').replace('tweet-', '')
+
+                # محتوای توییت
+                content_elem = tweet.select_one('.tweet-content')
+                content = content_elem.get_text(
+                    strip=True) if content_elem else ""
+
+                # تاریخ توییت
+                date_elem = tweet.select_one('.tweet-date a')
+                date_full = date_elem.get('title', '') if date_elem else ""
+                date_short = date_elem.get_text(
+                    strip=True) if date_elem else ""
+
+                # لینک توییت
+                link = f"https://twitter.com/{username}/status/{tweet_id}" if tweet_id else ""
+
+                # بررسی نوع توییت
+                is_retweet = bool(tweet.select_one('.retweet-header'))
+                is_reply = content.startswith('@')
+
+                # ساختار داده برای سازگاری با فرمت قبلی
+                tweet_data = {
+                    'id': tweet_id,
+                    'title': content,
+                    'link': link,
+                    'published': date_short,
+                    'published_parsed': None,
+                    'is_retweet': is_retweet,
+                    'is_reply': is_reply
+                }
+
+                tweets_data.append(tweet_data)
+            except Exception as e:
+                print(f"خطا در پردازش توییت: {e}")
+                continue
+
+        return tweets_data
+
+    except Exception as e:
+        print(f"خطا در اسکرپینگ: {e}")
+        return []
+
 
 # مسیرهای Flask
 @app.route('/')
@@ -403,6 +499,7 @@ def home():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     return redirect(url_for('login'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -412,13 +509,15 @@ def login():
 
         users = load_users()
 
-        if username in users and check_password_hash(users[username]['password'], password):
+        if username in users and check_password_hash(
+                users[username]['password'], password):
             session['user_id'] = username
             return redirect(url_for('dashboard'))
 
         flash('نام کاربری یا رمز عبور اشتباه است')
 
     return render_template('login.html')
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -444,10 +543,12 @@ def register():
 
     return render_template('register.html')
 
+
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
     return redirect(url_for('login'))
+
 
 @app.route('/dashboard')
 @login_required
@@ -455,9 +556,10 @@ def dashboard():
     user_id = session['user_id']
     user_monitors = active_usernames.get(user_id, [])
 
-    return render_template('dashboard.html', 
-                          active_usernames=user_monitors,
-                          is_monitoring_active=is_monitoring_active)
+    return render_template('dashboard.html',
+                           active_usernames=user_monitors,
+                           is_monitoring_active=is_monitoring_active)
+
 
 @app.route('/start_monitoring', methods=['POST'])
 @login_required
@@ -483,7 +585,8 @@ def start_monitoring_route():
     is_already_monitoring = False
     if user_id in active_usernames:
         for existing in active_usernames[user_id]:
-            if isinstance(existing, dict) and existing.get('username') == username:
+            if isinstance(existing,
+                          dict) and existing.get('username') == username:
                 is_already_monitoring = True
                 break
             elif existing == username:  # For backward compatibility
@@ -501,12 +604,16 @@ def start_monitoring_route():
         # حذف آیدی آخرین توییت برای این کاربر از فایل
         if os.path.exists(f"last_tweet_ids_{user_id}.json"):
             try:
-                with open(f"last_tweet_ids_{user_id}.json", 'r', encoding='utf-8') as f:
+                with open(f"last_tweet_ids_{user_id}.json",
+                          'r',
+                          encoding='utf-8') as f:
                     data = json.load(f)
                     for key in list(data.keys()):
                         if key.startswith(f"{username}_"):
                             del data[key]
-                with open(f"last_tweet_ids_{user_id}.json", 'w', encoding='utf-8') as f:
+                with open(f"last_tweet_ids_{user_id}.json",
+                          'w',
+                          encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)
             except:
                 pass
@@ -515,6 +622,7 @@ def start_monitoring_route():
     start_monitoring_for_user(user_id, username, monitor_type, reset_history)
 
     return redirect(url_for('dashboard'))
+
 
 @app.route('/stop_monitoring/<username>')
 @login_required
@@ -527,17 +635,21 @@ def stop_monitoring_route(username):
 
     return redirect(url_for('dashboard'))
 
+
 @app.route('/tweets/<username>')
 @login_required
 def view_tweets(username):
     user_id = session['user_id']
+    # بررسی آیا از اسکرپینگ استفاده شود یا RSS
+    use_scraping = request.args.get('scrape', 'false').lower() == 'true'
 
     # بررسی اینکه آیا این کاربر اجازه دسترسی به این توییت‌ها را دارد
     has_access = False
 
     if user_id in active_usernames:
         for user_monitor in active_usernames[user_id]:
-            if isinstance(user_monitor, dict) and user_monitor.get('username') == username:
+            if isinstance(user_monitor,
+                          dict) and user_monitor.get('username') == username:
                 has_access = True
                 break
             elif user_monitor == username:  # برای سازگاری با نسخه‌های قبلی
@@ -545,15 +657,22 @@ def view_tweets(username):
                 break
 
     # اگر دسترسی ندارد، بررسی کنیم که آیا فایل توییت‌ها وجود دارد
-    if not has_access and not os.path.exists(f"tweets_{user_id}_{username}.json"):
+    if not has_access and not os.path.exists(
+            f"tweets_{user_id}_{username}.json"):
         flash(f'شما به توییت‌های @{username} دسترسی ندارید')
         return redirect(url_for('dashboard'))
 
-    # نمایش توییت‌های ذخیره شده
-    tweets = load_tweets_for_user(user_id, username)
-    # مرتب‌سازی توییت‌ها بر اساس تاریخ (جدیدترین اول)
-    tweets.sort(key=lambda x: x.get('published', ''), reverse=True)
+    if use_scraping:
+        # استفاده از اسکرپینگ مستقیم
+        tweets = scrape_nitter_tweets(username)
+    else:
+        # نمایش توییت‌های ذخیره شده (روش قبلی)
+        tweets = load_tweets_for_user(user_id, username)
+        # مرتب‌سازی توییت‌ها بر اساس تاریخ (جدیدترین اول)
+        tweets.sort(key=lambda x: x.get('published', ''), reverse=True)
+
     return render_template('tweets.html', username=username, tweets=tweets)
+
 
 @app.route('/api/status')
 @login_required
@@ -566,6 +685,7 @@ def get_status():
         "active_usernames": user_monitors,
         "is_monitoring_active": is_monitoring_active
     })
+
 
 # ایجاد فایل‌های HTML مورد نیاز
 def create_templates():
